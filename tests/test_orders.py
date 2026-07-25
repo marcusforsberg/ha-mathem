@@ -297,3 +297,56 @@ def test_tracking_step_distinguishes_delivered_from_upcoming():
     assert upcoming.order.is_delivered is False
     # Unknown/missing tracking must not claim delivered.
     assert OrderDetail.from_api({"summary": {"orderNumber": "x"}}).order.is_delivered is False
+
+
+# -- narrowed delivery estimate --------------------------------------------
+
+
+def _order_with_subtitle(subtitle, delivery_time="imorgon, 06:00 - 11:00"):
+    from mathem_client.models import Order
+    return Order.from_api({
+        "orderNumber": "e1",
+        "delivery": {
+            "deliveryTime": delivery_time,
+            "tracking": {"stepName": "PROCESSING", "data": {"subtitle": subtitle}},
+        },
+    })
+
+
+def test_estimate_parsed_from_subtitle_with_en_dash():
+    # Mathem writes the narrowed window with an en dash, not a hyphen.
+    order = _order_with_subtitle("Vi tror att vi är hos dig mellan 08:25–09:25.")
+    start, end = order.estimated_window(NOW)
+    assert (start.hour, start.minute) == (8, 25)
+    assert (end.hour, end.minute) == (9, 25)
+    # Anchored to the booked window's date, not today.
+    assert start.date().isoformat() == "2026-07-26"
+
+
+def test_estimate_accepts_plain_hyphen():
+    order = _order_with_subtitle("Vi tror att vi är hos dig mellan 08:25-09:25.")
+    start, _ = order.estimated_window(NOW)
+    assert (start.hour, start.minute) == (8, 25)
+
+
+def test_no_estimate_before_packing():
+    # The subtitle carries other text until the order is packed.
+    order = _order_with_subtitle("Du kan fortfarande lägga till varor i din beställning.")
+    assert order.estimated_window(NOW) == (None, None)
+    assert _order_with_subtitle(None).estimated_window(NOW) == (None, None)
+
+
+def test_effective_window_prefers_estimate_then_falls_back():
+    est = _order_with_subtitle("Vi tror att vi är hos dig mellan 08:25–09:25.")
+    start, end = est.effective_window(NOW)
+    assert (start.hour, end.hour) == (8, 9)
+
+    plain = _order_with_subtitle("Du kan fortfarande lägga till varor.")
+    start, end = plain.effective_window(NOW)
+    assert (start.hour, end.hour) == (6, 11)  # the booked window
+
+
+def test_booked_window_is_never_overwritten_by_the_estimate():
+    order = _order_with_subtitle("Vi tror att vi är hos dig mellan 08:25–09:25.")
+    booked_start, booked_end = order.window(NOW)
+    assert (booked_start.hour, booked_end.hour) == (6, 11)

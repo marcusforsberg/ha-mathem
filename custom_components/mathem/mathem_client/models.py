@@ -568,9 +568,12 @@ class Order:
     cutoff_text: str | None
     is_doorstep_delivery: bool | None
     live_tracked_order: Any
-    # CONFIRMED / PACKED / ON_THE_WAY / DELIVERED. More reliable than the
+    # CONFIRMED / PROCESSING / ON_THE_WAY / DELIVERED. More reliable than the
     # localised status title for telling a past order from an upcoming one.
     tracking_step: str | None = None
+    # Free text under the tracking steps; carries the narrowed delivery
+    # estimate once the order is being packed.
+    tracking_subtitle: str | None = None
     raw: dict[str, Any] = field(repr=False, default_factory=dict)
 
     @classmethod
@@ -593,6 +596,7 @@ class Order:
             is_doorstep_delivery=_pick(tdata, "is_doorstep_delivery", "isDoorstepDelivery"),
             live_tracked_order=_pick(tdata, "live_tracked_order", "liveTrackedOrder"),
             tracking_step=_pick(tracking, "step_name", "stepName"),
+            tracking_subtitle=_pick(tdata, "subtitle"),
             raw=data,
         )
 
@@ -602,8 +606,57 @@ class Order:
         return (self.tracking_step or "").upper() == "DELIVERED"
 
     def window(self, now: datetime) -> tuple[datetime | None, datetime | None]:
-        """Reconstruct (start, end) datetimes from the localised window text."""
+        """The booked delivery window, reconstructed from its localised text."""
         return parse_delivery_window(self.delivery_time_text, now)
+
+    def estimated_window(self, now: datetime) -> tuple[datetime | None, datetime | None]:
+        """Mathem's narrowed estimate, if it has published one yet.
+
+        Anchored to the booked window's date, since the text has clock times
+        only. ``(None, None)`` until the order is packed.
+        """
+        booked_start, _ = self.window(now)
+        return parse_estimated_window(self.tracking_subtitle, booked_start)
+
+    def effective_window(self, now: datetime) -> tuple[datetime | None, datetime | None]:
+        """The estimate when there is one, otherwise the booked window."""
+        start, end = self.estimated_window(now)
+        if start is not None:
+            return (start, end)
+        return self.window(now)
+
+
+# Once an order is being packed, Mathem narrows the booked window to an estimate
+# and states it only in free text, e.g. "Vi tror att vi är hos dig mellan
+# 08:25–09:25." Note the en dash; an ordinary hyphen and a period separator are
+# accepted too so a wording change does not silently drop the estimate.
+_ESTIMATE_RE = re.compile(r"(\d{1,2})[:.](\d{2})\s*[–—−-]\s*(\d{1,2})[:.](\d{2})")
+
+
+def parse_estimated_window(
+    text: str | None, booked_start: datetime | None
+) -> tuple[datetime | None, datetime | None]:
+    """Pull a narrowed delivery estimate out of the tracking subtitle.
+
+    The text carries only clock times, so the date is taken from the booked
+    window. Returns ``(None, None)`` when no time range is present, which is the
+    normal case before an order is packed.
+    """
+    if not text or booked_start is None:
+        return (None, None)
+    match = _ESTIMATE_RE.search(text)
+    if not match:
+        return (None, None)
+    start_h, start_m, end_h, end_m = (int(g) for g in match.groups())
+    day = booked_start.astimezone(STORE_TZ)
+    try:
+        start = day.replace(hour=start_h, minute=start_m, second=0, microsecond=0)
+        end = day.replace(hour=end_h, minute=end_m, second=0, microsecond=0)
+    except ValueError:  # nonsense hour/minute in the text
+        return (None, None)
+    if end < start:  # window crosses midnight
+        end += timedelta(days=1)
+    return (start, end)
 
 
 @dataclass(slots=True)

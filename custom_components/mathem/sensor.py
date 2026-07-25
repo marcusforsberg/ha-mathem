@@ -51,10 +51,16 @@ class MathemNextDeliverySensor(MathemEntity, SensorEntity):
 
     @property
     def native_value(self) -> datetime | None:
+        """Start of the delivery window.
+
+        Once Mathem narrows the booked window to an estimate, that is the more
+        useful number, so the state follows it. The booked window stays
+        available in the attributes.
+        """
         order = self.coordinator.data.next_delivery if self.coordinator.data else None
         if order is None:
             return None
-        start, _ = order.window(dt_util.now())
+        start, _ = order.effective_window(dt_util.now())
         return start
 
     @property
@@ -62,12 +68,23 @@ class MathemNextDeliverySensor(MathemEntity, SensorEntity):
         order = self.coordinator.data.next_delivery if self.coordinator.data else None
         if order is None:
             return {}
-        _, end = order.window(dt_util.now())
+        now = dt_util.now()
+        booked_start, booked_end = order.window(now)
+        est_start, est_end = order.estimated_window(now)
+        _, effective_end = order.effective_window(now)
         return {
             "order_number": order.order_number,
             "window": order.delivery_time_text,
-            "window_end": end.isoformat() if end else None,
+            # Follows the state, so start and end always describe one window.
+            "window_end": effective_end.isoformat() if effective_end else None,
+            "booked_start": booked_start.isoformat() if booked_start else None,
+            "booked_end": booked_end.isoformat() if booked_end else None,
+            "estimated_start": est_start.isoformat() if est_start else None,
+            "estimated_end": est_end.isoformat() if est_end else None,
+            "is_estimated": est_start is not None,
+            "estimate_text": order.tracking_subtitle,
             "status": order.status_title,
+            "tracking_step": order.tracking_step,
             "edit_deadline": order.cutoff_text,
             "address": order.delivery_address,
             "doorstep_delivery": order.is_doorstep_delivery,

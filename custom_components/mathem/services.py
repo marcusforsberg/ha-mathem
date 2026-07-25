@@ -181,6 +181,7 @@ def _order_summary_dict(order: Order) -> dict[str, Any]:
         "can_be_ordered_again": order.can_be_ordered_again,
         "tracking_step": order.tracking_step,
         "delivered": order.is_delivered,
+        "estimate_text": order.tracking_subtitle,
     }
 
 
@@ -199,6 +200,7 @@ def _order_detail_dict(detail: OrderDetail) -> dict[str, Any]:
         "address": detail.order.delivery_address,
         "tracking_step": detail.order.tracking_step,
         "delivered": detail.order.is_delivered,
+        "estimate_text": detail.order.tracking_subtitle,
         "lines": [
             {
                 "product_id": line.product_id,

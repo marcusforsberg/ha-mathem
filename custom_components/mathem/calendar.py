@@ -28,6 +28,13 @@ async def async_setup_entry(
 
 
 def _event_for(order: Order, now: datetime) -> CalendarEvent | None:
+    """Build the event for an order.
+
+    Deliberately spans the whole booked window rather than any narrowed
+    estimate: the booked window is what Mathem committed to, and an estimate can
+    still move. The estimate goes in the description instead, and the sharper
+    time is on ``sensor.mathem_next_delivery``.
+    """
     start, end = order.window(now)
     if start is None:
         return None
@@ -36,11 +43,14 @@ def _event_for(order: Order, now: datetime) -> CalendarEvent | None:
     summary = "Mathem delivery"
     if order.order_number:
         summary = f"Mathem delivery #{order.order_number}"
+    description = " ".join(
+        part for part in (order.status_title, order.tracking_subtitle) if part
+    )
     return CalendarEvent(
         start=start,
         end=end,
         summary=summary,
-        description=order.status_title,
+        description=description or None,
     )
 
 

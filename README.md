@@ -298,11 +298,31 @@ data:
 
 | Entity                        | Description                                                                                                                                               |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sensor.mathem_next_delivery` | `timestamp` device class; state is the start of the next delivery window, with order number, window end, status, edit deadline and address in attributes. |
+| `sensor.mathem_next_delivery` | `timestamp` device class; state is the start of the next delivery window, and switches to Mathem's narrowed estimate once the order is packed. Attributes carry `booked_start`/`booked_end` and `estimated_start`/`estimated_end` separately, plus `is_estimated`, `estimate_text`, order number, status, tracking step, edit deadline and address. See [Delivery estimates](#delivery-estimates). |
 | `sensor.mathem_cart_total`    | Cart goods total, with the fee breakdown, line count and unit count in attributes.                                                                        |
 | `sensor.mathem_selected_slot` | The delivery slot Mathem currently holds, wherever it was booked (this integration, the app or the website). State is the local window as `YYYY-MM-DD HH:MM-HH:MM`; attributes carry `slot_id`, `window_start`, `window_end`, `price` and `cutoff`. `hold_expires_at` (the 60 minute cart hold) appears only for slots booked through the integration, since Mathem exposes it only in that response. Display only. |
-| `calendar.mathem_delivery`    | Upcoming deliveries, served entirely from coordinator data.                                                                                               |
+| `calendar.mathem_delivery`    | Upcoming deliveries, served entirely from coordinator data. Events always span the full booked window; any estimate appears in the event description.     |
 | `button.mathem_resync`        | Refreshes the cart, orders and held slot immediately, for when something changed in the Mathem app and you do not want to wait for the next poll. Categorised as diagnostic, so it appears in the device's Diagnostics card. |
+
+### Delivery estimates
+
+You book a wide window, say 06:00 to 11:00, and once the order is being packed
+Mathem narrows it to a much tighter estimate such as 08:25 to 09:25. The two are
+surfaced differently on purpose:
+
+- **The sensor follows the estimate.** Its state becomes the estimated start as
+  soon as one exists, because that is the number worth acting on. The booked
+  window is never lost: `booked_start` and `booked_end` stay alongside
+  `estimated_start` and `estimated_end`, and `is_estimated` tells you which one
+  the state is currently reporting. `window_end` always matches the state, so
+  start and end describe the same window.
+- **The calendar keeps the booked window.** An event that silently shrank to one
+  hour would misrepresent what Mathem actually committed to, and the estimate can
+  still move. The estimate is shown in the event description instead.
+
+Mathem publishes the estimate only as a sentence, so the integration parses the
+times out of it. If it cannot find a time range, the sensor simply reports the
+booked window and `is_estimated` stays false.
 
 ## Voice control
 
