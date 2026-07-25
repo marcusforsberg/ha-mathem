@@ -275,7 +275,7 @@ the configured default.
 | `mathem.set_alias`           | Pin a keyword to a product id (verifies the id).                                                                                     |
 | `mathem.remove_alias`        | Remove a pantry alias.                                                                                                               |
 | `mathem.export_pantry`       | Return the whole alias map.                                                                                                          |
-| `mathem.import_pantry`       | Import an alias map from a JSON file on an allowed path.                                                                             |
+| `mathem.import_pantry`       | Import an alias map inline (keyword to entry); merges, or replaces with `replace: true`.                                             |
 | `mathem.audit_pantry`        | Verify every pinned and ambiguous id still resolves.                                                                                 |
 
 Slot ids are ephemeral (adjacent days reuse unrelated ids), so prefer a

@@ -196,14 +196,15 @@ export_pantry:
 
 import_pantry:
   name: Import pantry
-  description: Import an alias map from a JSON file on an allowed path.
+  description: Import an alias map inline (keyword to entry). Merges by default; set replace to overwrite.
   fields:
-    path:
-      name: Path
+    aliases:
+      name: Aliases
+      description: The alias map to import, keyword to entry.
       required: true
-      example: /config/mathem_pantry.json
+      example: '{"tofu": {"product_id": 2751}, "mjölk": {"ambiguous": [2190, 5454], "prompt": "Vilken mjölk?"}}'
       selector:
-        text:
+        object:
     replace:
       name: Replace
       description: Replace the existing map instead of merging.

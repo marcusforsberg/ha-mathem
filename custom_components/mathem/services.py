@@ -9,7 +9,6 @@ regardless.
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
@@ -84,7 +83,7 @@ _SET_ALIAS_SCHEMA = vol.Schema(
 )
 _REMOVE_ALIAS_SCHEMA = vol.Schema({vol.Required("keyword"): cv.string})
 _IMPORT_PANTRY_SCHEMA = vol.Schema(
-    {vol.Required("path"): cv.string, vol.Optional("replace", default=False): cv.boolean}
+    {vol.Required("aliases"): dict, vol.Optional("replace", default=False): cv.boolean}
 )
 
 
@@ -446,18 +445,7 @@ def async_register_services(hass: HomeAssistant) -> None:
 
     async def import_pantry(call: ServiceCall) -> ServiceResponse:
         rt = _runtime(hass)
-        path = call.data["path"]
-        if not hass.config.is_allowed_path(path):
-            raise ServiceValidationError(f"Path not allowed: {path}")
-
-        def _read() -> dict[str, Any]:
-            with open(path, encoding="utf-8") as handle:
-                return json.load(handle)
-
-        try:
-            data = await hass.async_add_executor_job(_read)
-        except (OSError, ValueError) as err:
-            raise ServiceValidationError(f"Could not read {path}: {err}") from err
+        data = {"aliases": call.data["aliases"]}
         count = await rt.pantry.async_import(data, replace=call.data["replace"])
         return {"status": "ok", "imported": count}
 
