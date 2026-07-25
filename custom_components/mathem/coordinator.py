@@ -14,10 +14,17 @@ from datetime import datetime, timezone
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import BASE_POLL_INTERVAL, DELIVERY_DAY_POLL_INTERVAL, DOMAIN
-from .mathem_client import MathemAuthError, MathemClient
+from .const import (
+    BASE_POLL_INTERVAL,
+    CONF_PASSWORD,
+    CONF_USERNAME,
+    DELIVERY_DAY_POLL_INTERVAL,
+    DOMAIN,
+)
+from .mathem_client import MathemAuthError, MathemClient, MathemError
 from .mathem_client.models import Cart, SlotSelection
 from .mathem_client.orders import OrdersResult
 from .mathem_client.models import Order
@@ -55,18 +62,33 @@ class MathemCoordinator(DataUpdateCoordinator[MathemData]):
 
     async def _async_update_data(self) -> MathemData:
         try:
-            cart = await self.client.cart.get_cart()
-            orders = await self.client.orders.get_orders()
-        except MathemAuthError as err:
-            # Surface as a reauth-worthy failure; the 30-day sessionid expired.
-            raise UpdateFailed(f"authentication failed: {err}") from err
+            data = await self._fetch()
+        except MathemAuthError:
+            # The sessionid is not durable (it lives only in the in-memory
+            # cookie jar and expires), so re-login once before giving up.
+            try:
+                await self._relogin()
+                data = await self._fetch()
+            except MathemAuthError as err:
+                raise ConfigEntryAuthFailed(f"authentication failed: {err}") from err
+            except MathemError as err:
+                raise UpdateFailed(f"error talking to Mathem: {err}") from err
+        except MathemError as err:
+            raise UpdateFailed(f"error talking to Mathem: {err}") from err
+        self._retune_interval(data)
+        return data
 
+    async def _fetch(self) -> MathemData:
+        cart = await self.client.cart.get_cart()
+        orders = await self.client.orders.get_orders()
         # Preserve the last known slot selection across polls (it is not part of
         # the cart/orders payloads and is only refreshed on set_delivery_slot).
         selection = self.data.selection if self.data else None
-        data = MathemData(cart=cart, orders=orders, selection=selection)
-        self._retune_interval(data)
-        return data
+        return MathemData(cart=cart, orders=orders, selection=selection)
+
+    async def _relogin(self) -> None:
+        creds = self.config_entry.data
+        await self.client.session.login(creds[CONF_USERNAME], creds[CONF_PASSWORD])
 
     def apply_cart(self, cart: Cart) -> None:
         """Push a cart returned by a mutation straight into state."""

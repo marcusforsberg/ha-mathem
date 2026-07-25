@@ -165,9 +165,14 @@ class MathemSession:
         )
 
     async def verify_authenticated(self) -> bool:
-        """Cheap authenticated probe. Doubles as keep-alive / 403 detector."""
+        """Probe an auth-required endpoint. Doubles as keep-alive / 401 detector.
+
+        Uses ``/orders/`` rather than ``/cart/``: the cart endpoint also answers
+        for an anonymous session, so probing it would report authenticated even
+        when no ``sessionid`` is present and cause login to be skipped.
+        """
         try:
-            await self.get("/cart/", params={"group-by": "recipes"})
+            await self.get("/orders/")
         except MathemAuthError:
             return False
         return True
