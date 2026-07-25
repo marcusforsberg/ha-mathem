@@ -297,8 +297,8 @@ data:
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sensor.mathem_next_delivery` | `timestamp` device class; state is the start of the next delivery window, with order number, window end, status, edit deadline and address in attributes. |
 | `sensor.mathem_cart_total`    | Cart goods total, with the fee breakdown, line count and unit count in attributes.                                                                        |
-| `sensor.mathem_selected_slot` | The most recently selected slot, including `hold_expires_at` for the 60 minute cart hold (display only).                                                  |
-| `calendar.mathem`             | Upcoming deliveries, served entirely from coordinator data.                                                                                               |
+| `sensor.mathem_selected_slot` | The slot most recently selected **through this integration** (via `set_delivery_slot`), with `hold_expires_at` for the 60 minute cart hold (display only). It is `unknown` if you have not selected a slot through the integration, even when Mathem is holding one you picked elsewhere. |
+| `calendar.mathem_delivery`    | Upcoming deliveries, served entirely from coordinator data.                                                                                               |
 
 ## Voice control
 
