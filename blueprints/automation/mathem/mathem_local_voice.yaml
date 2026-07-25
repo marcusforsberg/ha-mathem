@@ -288,11 +288,17 @@ actions:
         sequence:
           - variables:
               window: "{{ state_attr(sensor_id, 'window') if sensor_id else none }}"
+              est_start: "{{ state_attr(sensor_id, 'estimated_start') if sensor_id else none }}"
+              est_end: "{{ state_attr(sensor_id, 'estimated_end') if sensor_id else none }}"
+          # Once Mathem narrows the window it is the more useful answer, but the
+          # booked window is what was actually promised, so give both.
           - set_conversation_response: >-
-              {% if window %}
-              Din nästa leverans är {{ window }}.
-              {% else %}
+              {% if not window %}
               Jag hittar ingen kommande leverans.
+              {% elif est_start and est_end %}
+              Mathem uppskattar {{ (as_datetime(est_start) | as_local).strftime('%H:%M') }} till {{ (as_datetime(est_end) | as_local).strftime('%H:%M') }}, inom det bokade fönstret {{ window }}.
+              {% else %}
+              Din nästa leverans är {{ window }}.
               {% endif %}
       # --- Book the cheapest morning slot ------------------------------
       - conditions: "{{ trigger.id == 'slot' }}"
