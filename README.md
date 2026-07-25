@@ -21,12 +21,12 @@ in mind.
 
 - [What it does](#what-it-does)
 - [What it deliberately does not do](#what-it-deliberately-does-not-do)
-- [The safety model](#the-safety-model)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Dietary profiles](#dietary-profiles)
 - [The pantry (alias map)](#the-pantry-alias-map)
+- [The safety model](#the-safety-model)
 - [Services](#services)
 - [Entities](#entities)
 - [Voice control](#voice-control)
@@ -62,35 +62,6 @@ your behalf.
 - No recipes and no shopping lists.
 - The cart is always left for human review before checkout. The cart audit is a
   prompt to read the label, never a medical clearance.
-
-## The safety model
-
-When you ask for an item by name, the resolver works through four tiers in order
-and stops at the first that establishes safety:
-
-1. **Alias pin.** A keyword you have pinned to a specific product id resolves
-   with zero inference. This is the primary mechanism: a household buys roughly
-   the same items, and a pinned entry bypasses the veto tiers because you
-   have asserted the product.
-2. **Category veto** on leaf category ids from the product detail endpoint. This
-   is more reliable than marketing badges for excluding eg. animal products.
-3. **Ingredient and allergen veto** on the Ingredienser and Allergener rows of
-   the product. When a required allergen row is missing, the resolver fails
-   closed: a missing row is treated as unknown, never as safe.
-4. **Badge filter**, opt in per profile, used only as a ranking and precision
-   hint. Diet badges have high precision but poor recall, so they are never the
-   safety gate.
-
-If none of these establishes safety, the resolver returns a
-`needs_disambiguation` result with candidates and the reason each was rejected.
-It never widens a query and never substitutes silently.
-
-Two invariants hold throughout:
-
-- The only lever a free-text request has is the search string. A product id is
-  only ever used when you assert it directly (a pin or an explicit id).
-- Promotion and pill data never influences ranking, so a discount can never
-  become a path around the diet gate.
 
 ## Requirements
 
@@ -228,6 +199,35 @@ Bootstrap the pantry from your real order history and manage it with
 `mathem.import_pantry` and `mathem.audit_pantry`. `set_alias` fetches the
 product to confirm the id resolves, so a wrong id fails loudly instead of
 quietly poisoning the map.
+
+## The safety model
+
+When you ask for an item by name, the resolver works through four tiers in order
+and stops at the first that establishes safety:
+
+1. **Alias pin.** A keyword you have pinned to a specific product id resolves
+   with zero inference. This is the primary mechanism: a household buys roughly
+   the same items, and a pinned entry bypasses the veto tiers because you
+   have asserted the product.
+2. **Category veto** on leaf category ids from the product detail endpoint. This
+   is more reliable than marketing badges for excluding eg. animal products.
+3. **Ingredient and allergen veto** on the Ingredienser and Allergener rows of
+   the product. When a required allergen row is missing, the resolver fails
+   closed: a missing row is treated as unknown, never as safe.
+4. **Badge filter**, opt in per profile, used only as a ranking and precision
+   hint. Diet badges have high precision but poor recall, so they are never the
+   safety gate.
+
+If none of these establishes safety, the resolver returns a
+`needs_disambiguation` result with candidates and the reason each was rejected.
+It never widens a query and never substitutes silently.
+
+Two invariants hold throughout:
+
+- The only lever a free-text request has is the search string. A product id is
+  only ever used when you assert it directly (a pin or an explicit id).
+- Promotion and pill data never influences ranking, so a discount can never
+  become a path around the diet gate.
 
 ## Services
 
