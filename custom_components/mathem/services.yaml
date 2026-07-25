@@ -1,0 +1,216 @@
+search_products:
+  name: Search products
+  description: >-
+    Search the Mathem catalogue. Returns products with the promotion block
+    passed through verbatim. This is the safe entry point for an LLM: its only
+    lever is the query string.
+  fields:
+    query:
+      name: Query
+      description: Free-text search string.
+      required: true
+      example: mjölk
+      selector:
+        text:
+    profile:
+      name: Profile
+      description: Dietary profile to bias results (defaults to the configured default).
+      selector:
+        text:
+    limit:
+      name: Limit
+      description: Maximum number of products to return.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 60
+          mode: box
+
+get_product:
+  name: Get product
+  description: Fetch full detail for one product, including ingredients, allergens and categories.
+  fields:
+    product_id:
+      name: Product ID
+      required: true
+      example: 5454
+      selector:
+        number:
+          mode: box
+
+add_item:
+  name: Add item
+  description: >-
+    Add an item to the cart. Give a query to resolve safely through the diet
+    profile, or a product_id to assert an exact product. Returns
+    needs_disambiguation instead of guessing when a query is unsafe or unclear.
+  fields:
+    query:
+      name: Query
+      description: Free-text item to resolve (mutually exclusive with product_id).
+      example: sojamjölk
+      selector:
+        text:
+    product_id:
+      name: Product ID
+      description: Exact product id to add (mutually exclusive with query).
+      selector:
+        number:
+          mode: box
+    quantity:
+      name: Quantity
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 99
+          mode: box
+    profile:
+      name: Profile
+      selector:
+        text:
+
+set_quantity:
+  name: Set quantity
+  description: Set an absolute quantity for a product (reads the cart and sends the delta).
+  fields:
+    product_id:
+      name: Product ID
+      required: true
+      selector:
+        number:
+          mode: box
+    quantity:
+      name: Quantity
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 99
+          mode: box
+
+remove_item:
+  name: Remove item
+  description: Remove a product from the cart entirely.
+  fields:
+    product_id:
+      name: Product ID
+      required: true
+      selector:
+        number:
+          mode: box
+
+get_cart:
+  name: Get cart
+  description: Return the current cart with line items, unit and line counts, and the fee breakdown.
+
+audit_cart:
+  name: Audit cart
+  description: >-
+    Advisory diet audit of every cart line. With no profile, returns a
+    per-profile matrix. This is a prompt to read the label, never a clearance.
+  fields:
+    profile:
+      name: Profile
+      selector:
+        text:
+
+list_delivery_slots:
+  name: List delivery slots
+  description: List delivery slots across the next few days, with local times and prices.
+  fields:
+    days:
+      name: Days
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 14
+          mode: box
+    profile:
+      name: Profile
+      selector:
+        text:
+
+set_delivery_slot:
+  name: Set delivery slot
+  description: >-
+    Select a delivery slot. Give a slot_id, or a predicate (weekdays, open_from,
+    open_to) to pick the cheapest matching slot. Slot ids are ephemeral, so
+    prefer a predicate.
+  fields:
+    slot_id:
+      name: Slot ID
+      description: Exact ephemeral slot id (mutually exclusive with predicate).
+      selector:
+        number:
+          mode: box
+    predicate:
+      name: Predicate
+      description: >-
+        Object with any of weekdays, open_from, open_to, route_group. Times are
+        local (Europe/Stockholm). Example {"weekdays":["sat"],"open_from":"06:00","open_to":"11:00"}.
+      selector:
+        object:
+    days:
+      name: Search days
+      description: How many days ahead to search when using a predicate.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 14
+          mode: box
+
+set_alias:
+  name: Set alias
+  description: Pin a keyword to a product id. Verifies the id resolves to a real product.
+  fields:
+    keyword:
+      name: Keyword
+      required: true
+      example: sojamjölk
+      selector:
+        text:
+    product_id:
+      name: Product ID
+      required: true
+      selector:
+        number:
+          mode: box
+
+remove_alias:
+  name: Remove alias
+  description: Remove a pantry alias.
+  fields:
+    keyword:
+      name: Keyword
+      required: true
+      selector:
+        text:
+
+export_pantry:
+  name: Export pantry
+  description: Return the whole alias map as a dict for backup.
+
+import_pantry:
+  name: Import pantry
+  description: Import an alias map from a JSON file on an allowed path.
+  fields:
+    path:
+      name: Path
+      required: true
+      example: /config/mathem_pantry.json
+      selector:
+        text:
+    replace:
+      name: Replace
+      description: Replace the existing map instead of merging.
+      default: false
+      selector:
+        boolean:
+
+audit_pantry:
+  name: Audit pantry
+  description: Verify every pinned and ambiguous product id still resolves to a live product.

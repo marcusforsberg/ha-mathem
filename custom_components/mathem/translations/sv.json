@@ -1,0 +1,48 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mathem-konto",
+        "description": "Logga in med dina Mathem-uppgifter.",
+        "data": {
+          "username": "E-post",
+          "password": "Lösenord"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Autentisera Mathem på nytt",
+        "description": "Din Mathem-session har gått ut. Ange ditt lösenord igen.",
+        "data": {
+          "password": "Lösenord"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunde inte logga in. Kontrollera uppgifterna och att inloggningsflödet fortfarande fungerar."
+    },
+    "abort": {
+      "already_configured": "Det här Mathem-kontot är redan konfigurerat.",
+      "reauth_successful": "Ny autentisering lyckades."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Alternativ för Mathem",
+        "description": "Leverans, avläsningsintervall och kostprofiler. Profiler redigeras som JSON, se readme-filen för formatet.",
+        "data": {
+          "delivery_address_id": "Leveransadress",
+          "unattended_delivery": "Lämna vid dörren (obemannad leverans)",
+          "poll_minutes": "Avläsningsintervall (minuter)",
+          "ambiguity_behaviour": "När en sökning är tvetydig",
+          "default_profile": "Standardprofil",
+          "filter_tokens": "Tillgängliga kostfilter",
+          "profiles_json": "Profiler (JSON)"
+        }
+      }
+    },
+    "error": {
+      "invalid_profiles": "JSON för profilerna kunde inte tolkas, eller en profil ärver från en okänd förälder."
+    }
+  }
+}

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Packaged integration / deploy artifacts
+*.zip
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# Local pantry exports and secrets
+*.pantry.json
+secrets.yaml
+.env
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store

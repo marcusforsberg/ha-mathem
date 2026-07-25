@@ -1,0 +1,48 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mathem account",
+        "description": "Log in with your Mathem credentials.",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Mathem",
+        "description": "Your Mathem session expired. Enter your password again.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not log in. Check the credentials and that the login handshake still works."
+    },
+    "abort": {
+      "already_configured": "This Mathem account is already configured.",
+      "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Mathem options",
+        "description": "Delivery, polling and dietary profiles. Profiles are edited as JSON; see the README for the shape.",
+        "data": {
+          "delivery_address_id": "Delivery address",
+          "unattended_delivery": "Leave at door (unattended delivery)",
+          "poll_minutes": "Poll interval (minutes)",
+          "ambiguity_behaviour": "When a query is ambiguous",
+          "default_profile": "Default profile",
+          "filter_tokens": "Available diet filters",
+          "profiles_json": "Profiles (JSON)"
+        }
+      }
+    },
+    "error": {
+      "invalid_profiles": "The profiles JSON could not be parsed or a profile inherits from an unknown parent."
+    }
+  }
+}

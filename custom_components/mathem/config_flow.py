@@ -1,0 +1,209 @@
+"""Config and options flow.
+
+The user step validates credentials by performing the login handshake. The
+options flow reads the delivery address live from the cart and
+builds filter-token checkboxes from the runtime-discovered vocabulary, so a
+public release offers whatever Mathem supports without a code change.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from typing import Any
+
+import voluptuous as vol
+from homeassistant.config_entries import (
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
+from homeassistant.core import callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+from .const import (
+    CONF_AMBIGUITY,
+    CONF_DEFAULT_PROFILE,
+    CONF_DELIVERY_ADDRESS_ID,
+    CONF_FILTER_TOKENS,
+    CONF_PASSWORD,
+    CONF_POLL_MINUTES,
+    CONF_PROFILES,
+    CONF_UNATTENDED,
+    CONF_USERNAME,
+    AMBIGUITY_ASK,
+    AMBIGUITY_REJECT,
+    DEFAULT_POLL_MINUTES,
+    DOMAIN,
+    FILTER_PROBE_QUERIES,
+)
+from .config_helpers import extract_addresses
+from .mathem_client import MathemClient, MathemError, MathemSession
+from .mathem_client.profiles import build_profiles
+
+_LOGGER = logging.getLogger(__name__)
+
+
+async def _validate_login(hass, username: str, password: str) -> MathemClient:
+    """Log in and return a client, or raise MathemError."""
+    session = MathemSession(async_get_clientsession(hass))
+    await session.login(username, password)
+    if not await session.verify_authenticated():
+        raise MathemError("login did not establish an authenticated session")
+    return MathemClient(session)
+
+
+class MathemConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Handle the initial credential setup and reauth."""
+
+    VERSION = 1
+
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            await self.async_set_unique_id(user_input[CONF_USERNAME].casefold())
+            self._abort_if_unique_id_configured()
+            try:
+                await _validate_login(
+                    self.hass, user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
+                )
+            except MathemError as err:
+                _LOGGER.warning("Mathem login failed: %s", err)
+                errors["base"] = "cannot_connect"
+            else:
+                return self.async_create_entry(
+                    title=user_input[CONF_USERNAME],
+                    data=user_input,
+                    options={CONF_UNATTENDED: True, CONF_POLL_MINUTES: DEFAULT_POLL_MINUTES},
+                )
+
+        schema = vol.Schema(
+            {vol.Required(CONF_USERNAME): str, vol.Required(CONF_PASSWORD): str}
+        )
+        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+
+    async def async_step_reauth(self, entry_data: dict[str, Any]) -> ConfigFlowResult:
+        self._reauth_username = entry_data[CONF_USERNAME]
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                await _validate_login(self.hass, self._reauth_username, user_input[CONF_PASSWORD])
+            except MathemError:
+                errors["base"] = "cannot_connect"
+            else:
+                entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+                assert entry is not None
+                self.hass.config_entries.async_update_entry(
+                    entry,
+                    data={**entry.data, CONF_PASSWORD: user_input[CONF_PASSWORD]},
+                )
+                await self.hass.config_entries.async_reload(entry.entry_id)
+                return self.async_abort(reason="reauth_successful")
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({vol.Required(CONF_PASSWORD): str}),
+            errors=errors,
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry) -> MathemOptionsFlow:
+        return MathemOptionsFlow()
+
+
+class MathemOptionsFlow(OptionsFlow):
+    """Delivery address, unattended toggle, poll interval, profiles, filters."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        options = self.config_entry.options
+
+        if user_input is not None:
+            profiles_text = user_input.pop("profiles_json", "").strip()
+            profiles: dict[str, Any] = options.get(CONF_PROFILES, {})
+            if profiles_text:
+                try:
+                    parsed = json.loads(profiles_text)
+                    build_profiles(parsed)  # validate inheritance and shapes
+                    profiles = parsed
+                except (ValueError, TypeError) as err:
+                    _LOGGER.warning("invalid profiles JSON: %s", err)
+                    errors["base"] = "invalid_profiles"
+            if not errors:
+                new_options = {
+                    CONF_DELIVERY_ADDRESS_ID: user_input.get(CONF_DELIVERY_ADDRESS_ID),
+                    CONF_UNATTENDED: user_input.get(CONF_UNATTENDED, True),
+                    CONF_POLL_MINUTES: user_input.get(CONF_POLL_MINUTES, DEFAULT_POLL_MINUTES),
+                    CONF_DEFAULT_PROFILE: user_input.get(CONF_DEFAULT_PROFILE) or None,
+                    CONF_AMBIGUITY: user_input.get(CONF_AMBIGUITY, AMBIGUITY_ASK),
+                    CONF_FILTER_TOKENS: user_input.get(CONF_FILTER_TOKENS, []),
+                    CONF_PROFILES: profiles,
+                }
+                return self.async_create_entry(title="", data=new_options)
+
+        # Live lookups for the form: addresses and the filter vocabulary.
+        address_options, filter_vocab = await self._live_choices()
+        profile_names = list((options.get(CONF_PROFILES) or {}).keys())
+
+        schema_dict: dict[Any, Any] = {}
+        if address_options:
+            schema_dict[
+                vol.Optional(
+                    CONF_DELIVERY_ADDRESS_ID,
+                    default=options.get(CONF_DELIVERY_ADDRESS_ID) or next(iter(address_options)),
+                )
+            ] = vol.In(address_options)
+        else:
+            schema_dict[
+                vol.Optional(CONF_DELIVERY_ADDRESS_ID, default=options.get(CONF_DELIVERY_ADDRESS_ID))
+            ] = vol.Coerce(int)
+
+        schema_dict[vol.Optional(CONF_UNATTENDED, default=options.get(CONF_UNATTENDED, True))] = bool
+        schema_dict[
+            vol.Optional(CONF_POLL_MINUTES, default=options.get(CONF_POLL_MINUTES, DEFAULT_POLL_MINUTES))
+        ] = vol.All(int, vol.Range(min=1, max=180))
+        schema_dict[
+            vol.Optional(CONF_AMBIGUITY, default=options.get(CONF_AMBIGUITY, AMBIGUITY_ASK))
+        ] = vol.In({AMBIGUITY_ASK: "Ask", AMBIGUITY_REJECT: "Reject"})
+        if profile_names:
+            schema_dict[
+                vol.Optional(CONF_DEFAULT_PROFILE, default=options.get(CONF_DEFAULT_PROFILE) or profile_names[0])
+            ] = vol.In(profile_names)
+        if filter_vocab:
+            schema_dict[
+                vol.Optional(CONF_FILTER_TOKENS, default=options.get(CONF_FILTER_TOKENS, []))
+            ] = cv_multi_select(filter_vocab)
+        schema_dict[vol.Optional("profiles_json", default="")] = str
+
+        return self.async_show_form(
+            step_id="init", data_schema=vol.Schema(schema_dict), errors=errors
+        )
+
+    async def _live_choices(self) -> tuple[dict[int, str], dict[str, str]]:
+        """Fetch address options and the filter vocabulary; empty on failure."""
+        session = MathemSession(async_get_clientsession(self.hass))
+        client = MathemClient(session)
+        addresses: dict[int, str] = {}
+        vocab: dict[str, str] = {}
+        try:
+            cart_raw = await session.get("/cart/", params={"group-by": "recipes"})
+            addresses = extract_addresses(cart_raw)
+        except MathemError as err:
+            _LOGGER.debug("could not read addresses: %s", err)
+        try:
+            vocab = await client.products.discover_filters(FILTER_PROBE_QUERIES)
+        except MathemError as err:
+            _LOGGER.debug("could not discover filters: %s", err)
+        return addresses, vocab
+
+
+def cv_multi_select(options: dict[str, str]):
+    """Multi-select validator (thin wrapper to keep imports local)."""
+    from homeassistant.helpers import config_validation as cv
+
+    return cv.multi_select(options)

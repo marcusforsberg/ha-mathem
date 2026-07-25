@@ -1,0 +1,20 @@
+[project]
+name = "ha-mathem"
+version = "0.1.0"
+description = "Home Assistant integration for Mathem, plus a standalone Mathem API client"
+requires-python = ">=3.12"
+
+# The vendored client depends only on aiohttp (already shipped by Home
+# Assistant). These are dev/test extras; the client itself pins nothing here.
+[project.optional-dependencies]
+dev = ["aiohttp", "pytest", "pytest-asyncio"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+# The vendored client is put on sys.path by the root conftest (appended, so it
+# cannot shadow stdlib modules like `calendar`).
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
