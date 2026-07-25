@@ -20,6 +20,19 @@ blueprint:
       selector:
         text:
 
+# This top-level description is handed to the conversation agent verbatim as the
+# tool description, so it must say WHEN to use the tool and HOW to fill fields.
+description: >-
+  Manage the user's Mathem online grocery cart. Use this whenever the user wants
+  to search Mathem for a product, add an item to the Mathem cart, change an
+  item's quantity, remove an item, or check what is currently in the cart. Set
+  `action` to one of search, add, set_quantity, remove or cart. For add and
+  search, pass a free-text `query` (a product name such as "havremjölk"); for
+  set_quantity and remove, pass a numeric `product_id` obtained from a prior
+  search. The response reports the resolved product, or a needs_disambiguation
+  status with candidate products to ask the user about. This never places an
+  order or checks out.
+
 # Serialise calls so two overlapping requests cannot race the cart.
 mode: queued
 max: 10
