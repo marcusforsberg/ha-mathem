@@ -108,6 +108,15 @@ blueprint:
             - "hur mycket kostar varukorgen[ på mathem]"
             - "visa varukorgen[ på mathem]"
             - "summera varukorgen[ på mathem]"
+        last_order_sentences:
+          name: Summarise last order
+          description: Read back the most recent order's total and item count.
+          selector:
+            text:
+              multiline: false
+              multiple: true
+          default:
+            - "(hämta|summera) min senaste (order|beställning|mathembeställning)[ från mathem]"
         delivery_sentences:
           name: Next delivery
           description: Ask when the next delivery arrives.
@@ -149,6 +158,9 @@ triggers:
   - trigger: conversation
     id: cart
     command: !input cart_sentences
+  - trigger: conversation
+    id: last_order
+    command: !input last_order_sentences
   - trigger: conversation
     id: delivery
     command: !input delivery_sentences
@@ -257,6 +269,19 @@ actions:
               Varukorgen är tom.
               {% else %}
               Varukorgen innehåller {{ cart.unit_count }} varor för {{ cart.display_price }} {{ cart.currency }}.
+              {% endif %}
+      # --- Summarise the most recent order -----------------------------
+      - conditions: "{{ trigger.id == 'last_order' }}"
+        sequence:
+          - action: mathem.get_order
+            response_variable: order
+          - set_conversation_response: >-
+              {% if order.status != 'ok' %}
+              Jag hittade ingen order.
+              {% elif order.delivered %}
+              Din senaste order levererades {{ order.delivery_time }} och innehöll {{ order.product_count }} varor för {{ order.total }} {{ order.currency }}.
+              {% else %}
+              Din nästa order levereras {{ order.delivery_time }} och innehåller {{ order.product_count }} varor för {{ order.total }} {{ order.currency }}.
               {% endif %}
       # --- Next delivery -----------------------------------------------
       - conditions: "{{ trigger.id == 'delivery' }}"

@@ -568,6 +568,9 @@ class Order:
     cutoff_text: str | None
     is_doorstep_delivery: bool | None
     live_tracked_order: Any
+    # CONFIRMED / PACKED / ON_THE_WAY / DELIVERED. More reliable than the
+    # localised status title for telling a past order from an upcoming one.
+    tracking_step: str | None = None
     raw: dict[str, Any] = field(repr=False, default_factory=dict)
 
     @classmethod
@@ -589,9 +592,130 @@ class Order:
             cutoff_text=_pick(delivery, "cutoff_text", "cutoffText"),
             is_doorstep_delivery=_pick(tdata, "is_doorstep_delivery", "isDoorstepDelivery"),
             live_tracked_order=_pick(tdata, "live_tracked_order", "liveTrackedOrder"),
+            tracking_step=_pick(tracking, "step_name", "stepName"),
             raw=data,
         )
+
+    @property
+    def is_delivered(self) -> bool:
+        """Whether the order has already been delivered."""
+        return (self.tracking_step or "").upper() == "DELIVERED"
 
     def window(self, now: datetime) -> tuple[datetime | None, datetime | None]:
         """Reconstruct (start, end) datetimes from the localised window text."""
         return parse_delivery_window(self.delivery_time_text, now)
+
+
+@dataclass(slots=True)
+class OrderLine:
+    """One product line on a placed order.
+
+    ``quantity`` is a float because Mathem bills weighted goods fractionally.
+    ``uncredited_quantity`` is what remains after any refund, so it can be lower
+    than ``quantity`` on a partially credited order.
+    """
+
+    product_id: int | None
+    description: str | None
+    quantity: float | None
+    uncredited_quantity: float | None
+    gross_amount: float | None
+    currency: str | None
+    vat_text: str | None
+    category: str | None
+    raw: dict[str, Any] = field(repr=False, default_factory=dict)
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any], category: str | None = None) -> OrderLine:
+        product_id = _pick(data, "product_id", "productId")
+        return cls(
+            product_id=int(product_id) if product_id is not None else None,
+            description=_pick(data, "description"),
+            quantity=_pick(data, "quantity"),
+            uncredited_quantity=_pick(data, "uncredited_quantity", "uncreditedQuantity"),
+            gross_amount=_pick(data, "gross_amount", "grossAmount"),
+            currency=_pick(data, "currency"),
+            vat_text=_pick(data, "vat_text", "vatText"),
+            category=category,
+            raw=data,
+        )
+
+    @property
+    def is_fully_credited(self) -> bool:
+        """True when the whole line was refunded."""
+        return self.uncredited_quantity == 0 and (self.quantity or 0) > 0
+
+
+@dataclass(slots=True)
+class OrderAdjustment:
+    """A non-product amount on an order: a fee, a deposit, a credit, a total."""
+
+    description: str | None
+    gross_amount: float | None
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> OrderAdjustment:
+        return cls(
+            description=_pick(data, "description"),
+            gross_amount=_pick(data, "gross_amount", "grossAmount"),
+        )
+
+
+@dataclass(slots=True)
+class OrderDetail:
+    """A placed order with its itemised lines, from ``GET /orders/{number}/``.
+
+    The order list carries only totals, so the lines come from here. ``summary``
+    repeats the list entry (in camelCase), so it is parsed as an :class:`Order`.
+    """
+
+    order: Order
+    lines: list[OrderLine]
+    adjustments: list[OrderAdjustment]
+    product_count: int | None
+    product_count_delivered: int | None
+    raw: dict[str, Any] = field(repr=False, default_factory=dict)
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> OrderDetail:
+        summary = _pick(data, "summary", default={}) or {}
+        items = _pick(data, "items", default={}) or {}
+
+        lines: list[OrderLine] = []
+        for group in _pick(items, "item_groups", "itemGroups", default=[]) or []:
+            category = _pick(group, "name")
+            for line in _pick(group, "items", default=[]) or []:
+                lines.append(OrderLine.from_api(line, category))
+
+        # Fees, deposits, credits and the totals live in their own groups.
+        adjustments: list[OrderAdjustment] = []
+        for group in _pick(items, "extra_item_groups", "extraItemGroups", default=[]) or []:
+            for line in _pick(group, "items", default=[]) or []:
+                adjustments.append(OrderAdjustment.from_api(line))
+
+        return cls(
+            order=Order.from_api(summary),
+            lines=lines,
+            adjustments=adjustments,
+            product_count=_pick(items, "product_count", "productCount"),
+            product_count_delivered=_pick(items, "product_count_delivered", "productCountDelivered"),
+            raw=data,
+        )
+
+    @property
+    def order_number(self) -> str | None:
+        return self.order.order_number
+
+    @property
+    def total(self) -> float | None:
+        """The order total, taken from the summary rather than re-derived."""
+        return _pick(self.raw.get("summary") or {}, "gross_amount", "grossAmount")
+
+    @property
+    def currency(self) -> str | None:
+        return _pick(self.raw.get("summary") or {}, "currency")
+
+    @property
+    def lines_total(self) -> float:
+        """Sum of the product lines, excluding fees, deposits and credits."""
+        return round(sum(line.gross_amount or 0.0 for line in self.lines), 2)

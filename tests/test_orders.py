@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from mathem_client.models import STORE_TZ, parse_delivery_window
+from mathem_client.models import STORE_TZ, OrderDetail, parse_delivery_window
 from mathem_client.orders import OrdersClient
 
 # 2026-07-25 is a Saturday (weekday 5), local noon.
@@ -158,3 +158,142 @@ async def test_get_orders_tolerates_camel_case():
     assert order.can_be_ordered_again is True
     assert order.is_doorstep_delivery is False
     assert bool(order.live_tracked_order) is True
+
+
+# -- order detail ----------------------------------------------------------
+
+# Mirrors the live GET /orders/{number}/ shape (camelCase, grouped lines, and
+# fee/credit/total rows in extraItemGroups). All values are invented.
+_DETAIL = {
+    "summary": {
+        "status": {"title": "Kvitto", "paymentStatus": "Betald", "canBeOrderedAgain": True},
+        "orderNumber": "a1b2c3",
+        "delivery": {
+            "deliveryAddress": "Exempelgatan 1, 111 11 Stockholm",
+            "deliveryTime": "sön 5. juli, 09:27",
+        },
+        "currency": "SEK",
+        "grossAmount": 120.5,
+        "invoiceLinks": [],
+    },
+    "items": {
+        "productCount": 4,
+        "productCountDelivered": 4,
+        "itemGroups": [
+            {
+                "type": "category",
+                "name": "Skafferi",
+                "items": [
+                    {"productId": 111, "description": "Havregryn 1 kg", "quantity": 2.0,
+                     "uncreditedQuantity": 2.0, "grossAmount": 40.0, "currency": "SEK",
+                     "vatText": "Moms 12%"},
+                    {"productId": 222, "description": "Rapsolja 900 ml", "quantity": 1.0,
+                     "uncreditedQuantity": 0.0, "grossAmount": 30.0, "currency": "SEK",
+                     "vatText": "Moms 12%"},
+                ],
+            },
+            {
+                "type": "category",
+                "name": "Frukt & grönt",
+                "items": [
+                    {"productId": 333, "description": "Bananer", "quantity": 1.0,
+                     "uncreditedQuantity": 1.0, "grossAmount": 25.0, "currency": "SEK",
+                     "vatText": "Moms 12%"},
+                ],
+            },
+        ],
+        "extraItemGroups": [
+            {"displayStyle": "secondary", "items": [{"description": "4 varor", "grossAmount": 95.0}]},
+            {"displayStyle": "secondary", "items": [
+                {"description": "Rapsolja 900 ml", "grossAmount": -30.0},
+                {"description": "Leverans", "grossAmount": 19.0},
+                {"description": "Lådor", "grossAmount": 14.0},
+            ]},
+            {"displayStyle": "primary", "items": [{"description": "Totalt inkl. moms", "grossAmount": 120.5}]},
+        ],
+        "alertBanner": None,
+    },
+}
+
+
+def test_order_detail_flattens_grouped_lines_with_category():
+    detail = OrderDetail.from_api(_DETAIL)
+    assert detail.order_number == "a1b2c3"
+    assert detail.total == 120.5
+    assert detail.currency == "SEK"
+    assert detail.product_count == 4
+    assert [(l.product_id, l.category) for l in detail.lines] == [
+        (111, "Skafferi"), (222, "Skafferi"), (333, "Frukt & grönt")
+    ]
+    assert detail.lines[0].quantity == 2.0
+    assert detail.lines[0].gross_amount == 40.0
+
+
+def test_order_detail_lines_total_excludes_fees():
+    detail = OrderDetail.from_api(_DETAIL)
+    assert detail.lines_total == 95.0  # 40 + 30 + 25, no delivery/box fees
+
+
+def test_order_detail_exposes_fees_and_credits_in_order():
+    detail = OrderDetail.from_api(_DETAIL)
+    assert [(a.description, a.gross_amount) for a in detail.adjustments] == [
+        ("4 varor", 95.0),
+        ("Rapsolja 900 ml", -30.0),
+        ("Leverans", 19.0),
+        ("Lådor", 14.0),
+        ("Totalt inkl. moms", 120.5),
+    ]
+
+
+def test_fully_credited_line_is_flagged():
+    detail = OrderDetail.from_api(_DETAIL)
+    by_id = {l.product_id: l for l in detail.lines}
+    assert by_id[222].is_fully_credited is True   # uncredited 0 of 1
+    assert by_id[111].is_fully_credited is False
+
+
+def test_order_detail_reuses_summary_for_status_and_delivery():
+    detail = OrderDetail.from_api(_DETAIL)
+    assert detail.order.status_title == "Kvitto"
+    assert detail.order.payment_status == "Betald"
+    assert detail.order.delivery_time_text == "sön 5. juli, 09:27"
+    start, _ = detail.order.window(NOW)
+    assert start.date().isoformat() == "2026-07-05"
+
+
+def test_order_detail_tolerates_missing_items():
+    detail = OrderDetail.from_api({"summary": {"orderNumber": "x", "grossAmount": 0}})
+    assert detail.lines == [] and detail.adjustments == []
+    assert detail.lines_total == 0
+
+
+async def test_get_latest_order_picks_the_first_listed():
+    class _S:
+        def __init__(self): self.paths = []
+        async def get(self, path, *, params=None):
+            self.paths.append(path)
+            if path == "/orders/":
+                return _SNAKE
+            return _DETAIL
+    session = _S()
+    detail = await OrdersClient(session).get_latest_order()
+    assert session.paths == ["/orders/", "/orders/abc123/"]  # active order first
+    assert detail.order_number == "a1b2c3"
+
+
+def test_tracking_step_distinguishes_delivered_from_upcoming():
+    delivered = OrderDetail.from_api({
+        "summary": {"orderNumber": "d1", "grossAmount": 10,
+                    "delivery": {"deliveryTime": "sön 5. juli, 09:27",
+                                 "tracking": {"stepName": "DELIVERED", "data": {}}}},
+    })
+    upcoming = OrderDetail.from_api({
+        "summary": {"orderNumber": "u1", "grossAmount": 10,
+                    "delivery": {"deliveryTime": "imorgon, 06:00 - 11:00",
+                                 "tracking": {"stepName": "CONFIRMED", "data": {}}}},
+    })
+    assert delivered.order.tracking_step == "DELIVERED"
+    assert delivered.order.is_delivered is True
+    assert upcoming.order.is_delivered is False
+    # Unknown/missing tracking must not claim delivered.
+    assert OrderDetail.from_api({"summary": {"orderNumber": "x"}}).order.is_delivered is False

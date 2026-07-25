@@ -26,7 +26,7 @@ from .config_helpers import extract_addresses
 from .const import DOMAIN
 from .data import MathemConfigEntry, MathemRuntime
 from .mathem_client import MathemError, ResolveStatus, SlotPredicate, cheapest_matching
-from .mathem_client.models import Cart, ProductDetail, Slot
+from .mathem_client.models import Cart, Order, OrderDetail, ProductDetail, Slot, _pick
 from .mathem_client.profiles import Profile
 from .mathem_client.resolve import Resolver
 
@@ -44,6 +44,8 @@ SERVICE_LIST_SLOTS = "list_delivery_slots"
 SERVICE_SET_SLOT = "set_delivery_slot"
 SERVICE_SET_ALIAS = "set_alias"
 SERVICE_REMOVE_ALIAS = "remove_alias"
+SERVICE_GET_ORDERS = "get_orders"
+SERVICE_GET_ORDER = "get_order"
 SERVICE_EXPORT_PANTRY = "export_pantry"
 SERVICE_IMPORT_PANTRY = "import_pantry"
 SERVICE_AUDIT_PANTRY = "audit_pantry"
@@ -78,6 +80,10 @@ _SET_SLOT_SCHEMA = vol.Schema(
         vol.Optional("days", default=5): vol.All(int, vol.Range(min=1, max=14)),
     }
 )
+_GET_ORDERS_SCHEMA = vol.Schema(
+    {vol.Optional("limit", default=10): vol.All(int, vol.Range(min=1, max=50))}
+)
+_GET_ORDER_SCHEMA = vol.Schema({vol.Optional("order_number"): cv.string})
 _SET_ALIAS_SCHEMA = vol.Schema(
     {vol.Required("keyword"): cv.string, vol.Required("product_id"): vol.Coerce(int)}
 )
@@ -158,6 +164,61 @@ def _added_line_info(cart: Cart, product_id: int) -> dict[str, Any]:
         "available": line.is_available,
         "availability_note": line.availability_note,
         "has_alternatives": line.has_alternative_products,
+    }
+
+
+def _order_summary_dict(order: Order) -> dict[str, Any]:
+    """An order as it appears in the list: totals and delivery, no line items."""
+    summary = order.raw
+    return {
+        "order_number": order.order_number,
+        "total": _pick(summary, "gross_amount", "grossAmount"),
+        "currency": _pick(summary, "currency"),
+        "status": order.status_title,
+        "payment_status": order.payment_status,
+        "delivery_time": order.delivery_time_text,
+        "address": order.delivery_address,
+        "can_be_ordered_again": order.can_be_ordered_again,
+        "tracking_step": order.tracking_step,
+        "delivered": order.is_delivered,
+    }
+
+
+def _order_detail_dict(detail: OrderDetail) -> dict[str, Any]:
+    """A full order: every product line, the fee/credit rows and the total."""
+    return {
+        "order_number": detail.order_number,
+        "total": detail.total,
+        "currency": detail.currency,
+        "lines_total": detail.lines_total,
+        "product_count": detail.product_count,
+        "product_count_delivered": detail.product_count_delivered,
+        "status": detail.order.status_title,
+        "payment_status": detail.order.payment_status,
+        "delivery_time": detail.order.delivery_time_text,
+        "address": detail.order.delivery_address,
+        "tracking_step": detail.order.tracking_step,
+        "delivered": detail.order.is_delivered,
+        "lines": [
+            {
+                "product_id": line.product_id,
+                "name": line.description,
+                "quantity": line.quantity,
+                "uncredited_quantity": line.uncredited_quantity,
+                "gross_amount": line.gross_amount,
+                "currency": line.currency,
+                "vat": line.vat_text,
+                "category": line.category,
+                "fully_credited": line.is_fully_credited,
+            }
+            for line in detail.lines
+        ],
+        # Fees, deposits, credits and Mathem's own subtotal/total rows, verbatim
+        # and in order, so a consumer can show the same breakdown as the receipt.
+        "adjustments": [
+            {"description": adj.description, "gross_amount": adj.gross_amount}
+            for adj in detail.adjustments
+        ],
     }
 
 
@@ -414,6 +475,35 @@ def async_register_services(hass: HomeAssistant) -> None:
             "slots": [_slot_dict(s) for s in page.slots],
         }
 
+    async def get_orders(call: ServiceCall) -> ServiceResponse:
+        """List recent orders with their totals (no line items)."""
+        rt = _runtime(hass)
+        try:
+            result = await rt.client.orders.get_orders()
+        except MathemError as err:
+            raise HomeAssistantError(str(err)) from err
+        orders = result.orders[: call.data["limit"]]
+        return {
+            "count": len(orders),
+            "has_more": result.has_more,
+            "orders": [_order_summary_dict(o) for o in orders],
+        }
+
+    async def get_order(call: ServiceCall) -> ServiceResponse:
+        """Return one order in full. Without a number, the most recent one."""
+        rt = _runtime(hass)
+        order_number = call.data.get("order_number")
+        try:
+            if order_number:
+                detail = await rt.client.orders.get_order(order_number)
+            else:
+                detail = await rt.client.orders.get_latest_order()
+        except MathemError as err:
+            raise HomeAssistantError(str(err)) from err
+        if detail is None:
+            return {"status": "not_found", "message": "No orders on this account"}
+        return {"status": "ok", **_order_detail_dict(detail)}
+
     async def set_alias(call: ServiceCall) -> ServiceResponse:
         """Pin a keyword to a product id, verifying the id resolves to a name.
 
@@ -481,6 +571,8 @@ def async_register_services(hass: HomeAssistant) -> None:
         (SERVICE_AUDIT_CART, audit_cart, _AUDIT_CART_SCHEMA, ONLY),
         (SERVICE_LIST_SLOTS, list_delivery_slots, _LIST_SLOTS_SCHEMA, ONLY),
         (SERVICE_SET_SLOT, set_delivery_slot, _SET_SLOT_SCHEMA, OPTIONAL),
+        (SERVICE_GET_ORDERS, get_orders, _GET_ORDERS_SCHEMA, ONLY),
+        (SERVICE_GET_ORDER, get_order, _GET_ORDER_SCHEMA, ONLY),
         (SERVICE_SET_ALIAS, set_alias, _SET_ALIAS_SCHEMA, OPTIONAL),
         (SERVICE_REMOVE_ALIAS, remove_alias, _REMOVE_ALIAS_SCHEMA, OPTIONAL),
         (SERVICE_EXPORT_PANTRY, export_pantry, vol.Schema({}), ONLY),
@@ -496,7 +588,8 @@ def async_unregister_services(hass: HomeAssistant) -> None:
     for name in (
         SERVICE_SEARCH, SERVICE_GET_PRODUCT, SERVICE_ADD_ITEM, SERVICE_SET_QUANTITY,
         SERVICE_REMOVE_ITEM, SERVICE_GET_CART, SERVICE_AUDIT_CART, SERVICE_LIST_SLOTS,
-        SERVICE_SET_SLOT, SERVICE_SET_ALIAS, SERVICE_REMOVE_ALIAS, SERVICE_EXPORT_PANTRY,
+        SERVICE_SET_SLOT, SERVICE_GET_ORDERS, SERVICE_GET_ORDER, SERVICE_SET_ALIAS,
+        SERVICE_REMOVE_ALIAS, SERVICE_EXPORT_PANTRY,
         SERVICE_IMPORT_PANTRY, SERVICE_AUDIT_PANTRY,
     ):
         if hass.services.has_service(DOMAIN, name):

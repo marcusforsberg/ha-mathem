@@ -62,7 +62,9 @@ fields:
     description: >
       What to do: 'search' to look up products, 'add' to add an item by name,
       'set_quantity' to set an absolute quantity by product id, 'remove' to
-      remove a product by id, or 'cart' to read the current cart.
+      remove a product by id, 'cart' to read the current cart, 'orders' to list
+      recent orders with their totals, or 'order' to read one placed order in
+      full including every line.
     required: true
     selector:
       select:
@@ -72,6 +74,8 @@ fields:
           - set_quantity
           - remove
           - cart
+          - orders
+          - order
   query:
     name: Query
     description: Item to search for or add, free text such as "sojamjölk". Used by search and add.
@@ -89,6 +93,14 @@ fields:
         mode: box
         min: 1
         max: 99999999
+  order_number:
+    name: Order number
+    description: >
+      Used by the order action to read a specific placed order. Omit it to get
+      the most recent order.
+    required: false
+    selector:
+      text:
   quantity:
     name: Quantity
     description: Quantity for add and set_quantity (defaults to 1).
@@ -148,10 +160,20 @@ sequence:
         sequence:
           - action: mathem.get_cart
             response_variable: result
+      - conditions: "{{ action == 'orders' }}"
+        sequence:
+          - action: mathem.get_orders
+            response_variable: result
+      - conditions: "{{ action == 'order' }}"
+        sequence:
+          - action: mathem.get_order
+            data: >-
+              {{ {'order_number': order_number} if order_number else {} }}
+            response_variable: result
     default:
       - variables:
           result:
-            error: "Unknown action. Use search, add, set_quantity, remove or cart."
+            error: "Unknown action. Use search, add, set_quantity, remove, cart, orders or order."
   # Return the Mathem service response to the conversation agent so it can
   # phrase the reply (including needs_disambiguation candidates).
   - stop: "done"

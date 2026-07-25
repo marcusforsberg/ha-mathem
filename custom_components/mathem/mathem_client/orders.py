@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from .models import Order, _pick
+from .models import Order, OrderDetail, _pick
 from .session import MathemSession
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,6 +23,11 @@ class OrdersResult:
     has_more: bool
     get_more_url: str | None
     raw: dict[str, Any] = field(repr=False, default_factory=dict)
+
+    @property
+    def latest(self) -> Order | None:
+        """The most recent order, active ones first as the API returns them."""
+        return self.orders[0] if self.orders else None
 
     @property
     def next_delivery(self) -> Order | None:
@@ -54,3 +59,20 @@ class OrdersClient:
             get_more_url=_pick(data, "get_more_url", "getMoreUrl"),
             raw=data,
         )
+
+    async def get_order(self, order_number: str) -> OrderDetail:
+        """Fetch one order with its itemised lines.
+
+        The order list exposes only totals, so the lines come from this
+        endpoint. Unlike the list, it responds in camelCase.
+        """
+        data = await self._session.get(f"/orders/{order_number}/")
+        return OrderDetail.from_api(data)
+
+    async def get_latest_order(self) -> OrderDetail | None:
+        """Fetch the most recent order in full, or ``None`` if there are none."""
+        result = await self.get_orders()
+        latest = result.latest
+        if latest is None or latest.order_number is None:
+            return None
+        return await self.get_order(latest.order_number)

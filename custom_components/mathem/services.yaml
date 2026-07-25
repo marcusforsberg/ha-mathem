@@ -163,6 +163,34 @@ set_delivery_slot:
           max: 14
           mode: box
 
+get_orders:
+  name: Get orders
+  description: List recent orders with their totals, delivery date and status. No line items; use Get order for those.
+  fields:
+    limit:
+      name: Limit
+      description: Maximum number of orders to return, most recent first.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 50
+          mode: box
+
+get_order:
+  name: Get order
+  description: >-
+    Return one order in full: every product line with quantity and amount, the
+    fee, deposit and credit rows, and the order total. Omit the order number for
+    the most recent order.
+  fields:
+    order_number:
+      name: Order number
+      description: The order to fetch. Leave empty for the most recent order.
+      example: a1b2c3
+      selector:
+        text:
+
 set_alias:
   name: Set alias
   description: Pin a keyword to a product id. Verifies the id resolves to a real product.

@@ -32,6 +32,7 @@ from .errors import (
     MathemProtocolError,
     MathemRequestError,
 )
+from .models import OrderDetail
 from .orders import OrdersClient
 from .products import ProductsClient, SearchResult
 from .resolve import AliasEntry, AliasMap, Candidate, ResolveResult, ResolveStatus, Resolver
@@ -40,6 +41,7 @@ from .slots import SlotPage, SlotPredicate, SlotsClient, cheapest_matching, find
 
 __all__ = [
     "MathemClient",
+    "OrderDetail",
     "MathemSession",
     "ProductsClient",
     "CartClient",

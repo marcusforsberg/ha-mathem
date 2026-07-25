@@ -6,7 +6,7 @@ description: Operate the Mathem grocery integration in Home Assistant through it
 # Mathem via Home Assistant
 
 `marcusforsberg/ha-mathem` is a custom integration exposing the Swedish grocery
-service Mathem as 14 Home Assistant services plus four entities. Everything you
+service Mathem as 16 Home Assistant services plus five entities. Everything you
 need to call them is in this file, so there is no reason to list services first.
 
 **The one hard invariant: this integration never places an order.** There is no
@@ -53,6 +53,8 @@ resolved and defaults to the configured default profile.
 | `mathem.audit_cart` | `profile` (omit for a per-profile matrix) |
 | `mathem.list_delivery_slots` | `days` (1-14, default 3), `profile` |
 | `mathem.set_delivery_slot` | `slot_id` **xor** `predicate`, `days` (1-14, default 5) |
+| `mathem.get_orders` | `limit` (1-50, default 10) |
+| `mathem.get_order` | `order_number` (omit for the most recent) |
 | `mathem.set_alias` | `keyword`\*, `product_id`\* |
 | `mathem.remove_alias` | `keyword`\* |
 | `mathem.export_pantry` | none |
@@ -166,6 +168,14 @@ Success is `status: "selected"` with a `selection` object; otherwise read
 both `is_full` and `is_unavailable`. Wide windows are frequently far cheaper
 than narrow ones, often by an order of magnitude, so if the user wants the
 cheapest option, say what the window actually is rather than just the price.
+
+**Read a past order.** `get_orders` lists recent orders with totals only. For
+the itemised lines use `get_order`, which returns every product line with
+`name`, `quantity` and `gross_amount`, plus `adjustments[]` for the fee, deposit
+and credit rows and `lines_total` for the goods subtotal. Omit `order_number` to
+get the most recent order. A line whose `fully_credited` is true was refunded, so
+exclude it when summing, and `uncredited_quantity` is what the customer actually
+paid for when a line was partially refunded.
 
 **Manage the pantry.** The pantry is the alias map that makes everyday words
 resolve to the right product, and it is the single most effective way to improve

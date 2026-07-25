@@ -67,7 +67,7 @@ def _dump(record_dir: Path | None, name: str, payload) -> None:
     print(f"    recorded {path}")
 
 
-async def run(query: str, record_dir: Path | None, add_id: int | None) -> None:
+async def run(query: str, record_dir: Path | None, add_id: int | None, probe_order: str | None) -> None:
     user, password = _credentials()
 
     async with MathemClient.standalone() as client:
@@ -174,16 +174,39 @@ async def run(query: str, record_dir: Path | None, add_id: int | None) -> None:
             print(f"    parsed end:   {end.isoformat() if end else None}")
             print(f"    address:      {nxt.delivery_address}")
 
+        # --- order detail -------------------------------------------------
+        # GET /orders/{number}/ carries the line items and totals that the
+        # order list lacks. Read-only.
+        probe = probe_order or (orders.orders[0].order_number if orders.orders else None)
+        if probe:
+            print(f"\nOrder detail for #{probe}:")
+            data = await client.session.get(f"/orders/{probe}/")
+            _dump(record_dir, "order_detail", data)
+            print(f"  top-level keys: {list(data)}")
+
+            items = data.get("items")
+            print(f"\n  items: {type(items).__name__} len={len(items) if items is not None else 0}")
+            if isinstance(items, list) and items:
+                print(f"  items[0] keys: {list(items[0]) if isinstance(items[0], dict) else type(items[0]).__name__}")
+                for item in items[:2]:
+                    print("    " + json.dumps(item, ensure_ascii=False)[:700])
+
+            print(f"\n  summary: {json.dumps(data.get('summary'), ensure_ascii=False)[:1200]}")
+
+            print(f"\n  info row keys: {[r.get('key') for r in (data.get('info') or []) if isinstance(r, dict)]}")
+            print(f"  options: {json.dumps(data.get('options'), ensure_ascii=False)[:300]}")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Live smoke test for the Mathem client.")
     parser.add_argument("query", nargs="?", default="mjölk", help="search query (default: mjölk)")
     parser.add_argument("--record", metavar="DIR", help="dump raw JSON payloads to DIR for fixtures")
     parser.add_argument("--add", metavar="ID", type=int, help="add one unit of this product id to your real cart (a mutation)")
+    parser.add_argument("--probe-order", metavar="NUMBER", help="probe order detail endpoints for this order number (default: most recent)")
     args = parser.parse_args()
     record_dir = Path(args.record) if args.record else None
     try:
-        asyncio.run(run(args.query, record_dir, args.add))
+        asyncio.run(run(args.query, record_dir, args.add, args.probe_order))
     except MathemError as err:
         print(f"Mathem error: {err}", file=sys.stderr)
         body = getattr(err, "body", None)

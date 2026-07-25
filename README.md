@@ -273,6 +273,8 @@ the configured default.
 | `mathem.audit_cart`          | Advisory diet audit of every line. With no profile, a per-profile matrix.                                                            |
 | `mathem.list_delivery_slots` | List slots with local times and prices.                                                                                              |
 | `mathem.set_delivery_slot`   | Select a slot by `slot_id` or by a `predicate`.                                                                                      |
+| `mathem.get_orders`          | List recent orders with totals, delivery date and status.                                                                            |
+| `mathem.get_order`           | One order in full: every line with quantity and amount, the fee and credit rows, and the total. Omit the number for the most recent. |
 | `mathem.set_alias`           | Pin a keyword to a product id (verifies the id).                                                                                     |
 | `mathem.remove_alias`        | Remove a pantry alias.                                                                                                               |
 | `mathem.export_pantry`       | Return the whole alias map.                                                                                                          |

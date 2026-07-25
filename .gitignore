@@ -26,6 +26,11 @@ htmlcov/
 secrets.yaml
 .env
 
+# Recorded API payloads. These contain real account data (name, address,
+# customer number, payment method, order history) and must never be committed.
+# Tests use synthetic payloads defined inline instead.
+tests/fixtures/
+
 # Editor / OS
 .idea/
 .vscode/
