@@ -1,0 +1,147 @@
+blueprint:
+  name: "Mathem: local voice control"
+  description: >
+    Basic Swedish sentences for controlling the Mathem cart locally, handled by
+    the built-in conversation agent without an LLM. Covers adding an item,
+    removing an item, reading the cart, asking about the next delivery, and
+    booking the cheapest morning slot.
+
+    Notes: local sentence triggers only fire on the built-in agent. If you use
+    an LLM agent, enable "Prefer handling commands locally" so these run first.
+    Local matching is skipped on follow-up turns, so say the whole command in
+    one utterance.
+  domain: automation
+  homeassistant:
+    min_version: "2024.8.0"
+  input:
+    profile:
+      name: Dietary profile
+      description: Profile name to use when adding items (empty = configured default).
+      default: ""
+      selector:
+        text:
+    next_delivery_sensor:
+      name: Next delivery sensor
+      description: The Mathem next-delivery sensor, used to answer "when is my delivery".
+      default: sensor.mathem_next_delivery
+      selector:
+        entity:
+          filter:
+            - integration: mathem
+              domain: sensor
+
+mode: queued
+max: 10
+
+triggers:
+  - trigger: conversation
+    id: add
+    command:
+      - "lägg till {item} i varukorgen"
+      - "handla {item} på mathem"
+      - "köp {item} på mathem"
+  - trigger: conversation
+    id: remove
+    command:
+      - "ta bort {item} från varukorgen"
+  - trigger: conversation
+    id: cart
+    command:
+      - "vad ligger i varukorgen[ på mathem]"
+      - "hur mycket kostar varukorgen[ på mathem]"
+      - "visa varukorgen[ på mathem]"
+      - "summera varukorgen[ på mathem]"
+  - trigger: conversation
+    id: delivery
+    command:
+      - "när kommer min leverans"
+      - "när är nästa leverans"
+      - "när kommer mathem"
+  - trigger: conversation
+    id: slot
+    command:
+      - "boka billigaste leverans"
+      - "välj billigaste leveranstid"
+
+conditions: []
+
+actions:
+  - variables:
+      profile: !input profile
+      sensor_id: !input next_delivery_sensor
+  - choose:
+      # --- Add an item -------------------------------------------------
+      - conditions: "{{ trigger.id == 'add' }}"
+        sequence:
+          - action: mathem.add_item
+            data:
+              query: "{{ trigger.slots.item }}"
+              profile: "{{ profile }}"
+            response_variable: result
+          - set_conversation_response: >-
+              {% if result.status == 'added' %}
+              La till {{ result.resolved_name or trigger.slots.item }}.
+              {% elif result.status == 'needs_disambiguation' %}
+              {{ result.prompt or 'Vilken vara menar du?' }}
+              {% else %}
+              Jag kunde inte lägga till {{ trigger.slots.item }}.
+              {% endif %}
+      # --- Remove an item (match a cart line by name) ------------------
+      - conditions: "{{ trigger.id == 'remove' }}"
+        sequence:
+          - action: mathem.get_cart
+            response_variable: cart
+          - variables:
+              needle: "{{ trigger.slots.item | lower }}"
+              match: >-
+                {% set ns = namespace(line=none) %}
+                {% for line in cart.lines %}
+                  {% if needle in (line.name | lower) %}{% set ns.line = line %}{% endif %}
+                {% endfor %}
+                {{ ns.line | to_json }}
+          - if: "{{ (match | from_json) is mapping }}"
+            then:
+              - action: mathem.remove_item
+                data:
+                  product_id: "{{ (match | from_json).product_id }}"
+              - set_conversation_response: "Tog bort {{ (match | from_json).name }}."
+            else:
+              - set_conversation_response: "Jag hittade inte {{ trigger.slots.item }} i varukorgen."
+      # --- Read the cart -----------------------------------------------
+      - conditions: "{{ trigger.id == 'cart' }}"
+        sequence:
+          - action: mathem.get_cart
+            response_variable: cart
+          - set_conversation_response: >-
+              {% if cart.unit_count | int == 0 %}
+              Varukorgen är tom.
+              {% else %}
+              Varukorgen innehåller {{ cart.unit_count }} varor för {{ cart.display_price }} {{ cart.currency }}.
+              {% endif %}
+      # --- Next delivery -----------------------------------------------
+      - conditions: "{{ trigger.id == 'delivery' }}"
+        sequence:
+          - variables:
+              window: "{{ state_attr(sensor_id, 'window') if sensor_id else none }}"
+          - set_conversation_response: >-
+              {% if window %}
+              Din nästa leverans är {{ window }}.
+              {% else %}
+              Jag hittar ingen kommande leverans.
+              {% endif %}
+      # --- Book the cheapest morning slot ------------------------------
+      - conditions: "{{ trigger.id == 'slot' }}"
+        sequence:
+          - action: mathem.set_delivery_slot
+            data:
+              predicate:
+                open_from: "06:00"
+                open_to: "12:00"
+              days: 7
+            response_variable: slot
+          - set_conversation_response: >-
+              {% if slot.status == 'selected' %}
+              Bokade {{ slot.selection.name or slot.selection.name_short }}.
+              {% else %}
+              {{ slot.message | default('Jag hittade ingen ledig leveranstid.') }}
+              {% endif %}

@@ -1,0 +1,115 @@
+blueprint:
+  name: "Mathem: Assist cart tool"
+  description: >
+    Exposes Mathem cart control to a conversation agent. Create a script from
+    this blueprint, then expose that script to Assist (Settings -> Voice
+    assistants -> Expose). The agent can then search the catalogue, add items
+    (resolved through your dietary profile), change quantities, remove items,
+    and read the cart, all from natural language. The agent supplies `action`
+    plus the relevant fields.
+  domain: script
+  homeassistant:
+    min_version: "2024.8.0"
+  input:
+    default_profile:
+      name: Default dietary profile
+      description: >
+        Profile name passed to Mathem for search and add. Leave empty to use
+        the integration's configured default profile.
+      default: ""
+      selector:
+        text:
+
+# Serialise calls so two overlapping requests cannot race the cart.
+mode: queued
+max: 10
+
+# These fields become the tool parameters the conversation agent fills in.
+fields:
+  action:
+    name: Action
+    description: >
+      What to do: 'search' to look up products, 'add' to add an item by name,
+      'set_quantity' to set an absolute quantity by product id, 'remove' to
+      remove a product by id, or 'cart' to read the current cart.
+    required: true
+    selector:
+      select:
+        options:
+          - search
+          - add
+          - set_quantity
+          - remove
+          - cart
+  query:
+    name: Query
+    description: Item to search for or add, free text such as "sojamjölk". Used by search and add.
+    required: false
+    selector:
+      text:
+  product_id:
+    name: Product ID
+    description: Exact Mathem product id. Used by set_quantity and remove.
+    required: false
+    selector:
+      number:
+        mode: box
+        min: 1
+        max: 99999999
+  quantity:
+    name: Quantity
+    description: Quantity for add and set_quantity (defaults to 1).
+    required: false
+    default: 1
+    selector:
+      number:
+        mode: box
+        min: 0
+        max: 99
+
+sequence:
+  - variables:
+      profile: !input default_profile
+      qty: "{{ (quantity | default(1)) | int(1) }}"
+  - choose:
+      - conditions: "{{ action == 'search' }}"
+        sequence:
+          - action: mathem.search_products
+            data:
+              query: "{{ query }}"
+              profile: "{{ profile }}"
+              limit: 5
+            response_variable: result
+      - conditions: "{{ action == 'add' }}"
+        sequence:
+          - action: mathem.add_item
+            data:
+              query: "{{ query }}"
+              quantity: "{{ qty }}"
+              profile: "{{ profile }}"
+            response_variable: result
+      - conditions: "{{ action == 'set_quantity' }}"
+        sequence:
+          - action: mathem.set_quantity
+            data:
+              product_id: "{{ product_id | int }}"
+              quantity: "{{ qty }}"
+            response_variable: result
+      - conditions: "{{ action == 'remove' }}"
+        sequence:
+          - action: mathem.remove_item
+            data:
+              product_id: "{{ product_id | int }}"
+            response_variable: result
+      - conditions: "{{ action == 'cart' }}"
+        sequence:
+          - action: mathem.get_cart
+            response_variable: result
+    default:
+      - variables:
+          result:
+            error: "Unknown action. Use search, add, set_quantity, remove or cart."
+  # Return the Mathem service response to the conversation agent so it can
+  # phrase the reply (including needs_disambiguation candidates).
+  - stop: "done"
+    response_variable: result
