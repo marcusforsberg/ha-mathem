@@ -3,7 +3,8 @@
 A custom [Home Assistant](https://www.home-assistant.io/) integration for
 [Mathem](https://www.mathem.se/), the Swedish online grocery service. It exposes
 product search, a diet-aware cart, delivery slot selection and order status as
-Home Assistant services and entities, with Swedish voice control in mind.
+Home Assistant services and entities, with Swedish [voice control](#voice-control)
+in mind.
 
 > [!IMPORTANT]
 > **Disclaimer.** This project was written by an AI coding assistant. It is an
@@ -100,10 +101,13 @@ Two invariants hold throughout:
 
 ### HACS (recommended)
 
-1. In HACS, add this repository as a custom repository of type _Integration_.
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=marcusforsberg&repository=ha-mathem&category=integration)
+
+1. Click the button above, or in HACS add `marcusforsberg/ha-mathem` as a custom
+   repository of type **Integration**.
 2. Search for **Mathem** in HACS and install it.
 3. Restart Home Assistant.
-4. Go to **Settings -> Devices & Services -> Add Integration** and search for
+4. Go to **Settings → Devices & Services → Add Integration** and search for
    **Mathem**.
 
 ### Manual
@@ -138,11 +142,17 @@ Open the integration and choose **Configure** to set:
 
 ## Dietary profiles
 
-Profiles are the only place diet rules live. Nothing is hardcoded, and the
-integration ships with none, so a household with no restrictions can use it as
-is. Profiles are entered as JSON in the options. `inherits` lets one profile
-start from another and override specific keys, so shared rules are maintained
-once.
+A **profile** is a named set of dietary rules that the integration applies when
+it turns a spoken or typed item into a real product. A profile decides what to
+exclude (whole product categories, or specific ingredients), which allergens the
+product must be free of, and which product badges to prefer. You can define one
+profile per person or a single shared household profile.
+
+Profiles are optional. With none configured, items resolve without any dietary
+filtering, so the integration works just as well for a household with no dietary
+needs. Profiles are written as JSON in the integration options; `inherits` lets
+one profile build on another and override only the keys that differ, so shared
+rules stay in one place.
 
 ```json
 {
@@ -180,9 +190,15 @@ Field reference:
 
 ## The pantry (alias map)
 
-The pantry maps everyday words to products. It is stored in Home Assistant's
-storage and managed through services rather than a form, because managing
-roughly 150 rows through a dialog is not practical.
+The **pantry** is your personal dictionary that maps the everyday words you say
+to specific products, so the assistant resolves them the way you mean. It is the
+most reliable way to handle the items you buy regularly. An entry can pin a word
+to an exact product, list synonyms for it, mark a word as ambiguous so the
+assistant asks which one you meant, or rewrite a word into a more specific search
+with required filters.
+
+The pantry is stored by Home Assistant and managed through services rather than a
+settings form, which keeps it easy to script, back up, and edit in bulk.
 
 Entry kinds:
 
@@ -261,16 +277,16 @@ data:
 ## Voice control
 
 Two blueprints ship with the integration under [`blueprints/`](blueprints), one
-for each style of Assist. While the repository is private, install them by
-copying the files into your Home Assistant `config/blueprints/` directory
-(preserving the `automation/mathem/` and `script/mathem/` paths); once the repo
-is public you can instead use **Settings → Automations & Scenes → Blueprints →
-Import blueprint** with the file's URL.
+for each style of Assist. Import a blueprint with its **Import blueprint** button
+below, or copy its file into your Home Assistant `config/blueprints/` directory
+(keeping the `automation/mathem/` and `script/mathem/` paths).
 
 The `mathem.*` services are also callable directly from your own scripts and
 automations if you prefer to build your own flows (see [Services](#services)).
 
 ### Local sentences (no LLM)
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fmarcusforsberg%2Fha-mathem%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fmathem%2Fmathem_local_voice.yaml)
 
 **Mathem: local voice control** (automation blueprint) handles a fixed set of
 Swedish phrases on the built-in conversation agent. Every phrase is an editable,
@@ -292,6 +308,8 @@ so these match first. Say the whole command in one utterance, local matching is
 skipped on follow-up turns.
 
 ### Full LLM control
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fmarcusforsberg%2Fha-mathem%2Fblob%2Fmain%2Fblueprints%2Fscript%2Fmathem%2Fmathem_assist_tool.yaml)
 
 **Mathem: full LLM control** (script blueprint) exposes a single tool to a
 language-model conversation agent, letting it search, add, change quantities,
