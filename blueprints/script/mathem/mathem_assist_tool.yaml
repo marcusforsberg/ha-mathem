@@ -1,12 +1,15 @@
 blueprint:
-  name: "Mathem: Assist cart tool"
+  name: "Mathem: full LLM control"
+  author: marcusforsberg
+  source_url: https://github.com/marcusforsberg/ha-mathem/blob/main/blueprints/script/mathem/mathem_assist_tool.yaml
   description: >
-    Exposes Mathem cart control to a conversation agent. Create a script from
-    this blueprint, then expose that script to Assist (Settings -> Voice
-    assistants -> Expose). The agent can then search the catalogue, add items
-    (resolved through your dietary profile), change quantities, remove items,
-    and read the cart, all from natural language. The agent supplies `action`
-    plus the relevant fields.
+    Full natural-language control of the Mathem cart through an LLM conversation
+    agent. Create a script from this blueprint, then expose that script to Assist
+    (Settings -> Voice assistants -> Expose). The agent can then search the
+    catalogue, add items (resolved through your dietary profile), change
+    quantities, remove items, and read the cart, all from free-form language. The
+    agent supplies `action` plus the relevant fields; unlike the local-sentence
+    automation there are no fixed phrases.
   domain: script
   homeassistant:
     min_version: "2024.8.0"
@@ -30,8 +33,10 @@ description: >-
   search, pass a free-text `query` (a product name such as "havremjölk"); for
   set_quantity and remove, pass a numeric `product_id` obtained from a prior
   search. The response reports the resolved product, or a needs_disambiguation
-  status with candidate products to ask the user about. This never places an
-  order or checks out.
+  status with candidate products to ask the user about. If an added item comes
+  back with `available: false`, it was added to the cart but is out of stock;
+  tell the user, include the `availability_note`, and mention that alternatives
+  exist when `has_alternatives` is true. This never places an order or checks out.
 
 # Serialise calls so two overlapping requests cannot race the cart.
 mode: queued

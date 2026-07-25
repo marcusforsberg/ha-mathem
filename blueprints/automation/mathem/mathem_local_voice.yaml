@@ -1,34 +1,107 @@
 blueprint:
   name: "Mathem: local voice control"
-  description: >
-    Basic Swedish sentences for controlling the Mathem cart locally, handled by
-    the built-in conversation agent without an LLM. Covers adding an item,
-    removing an item, reading the cart, asking about the next delivery, and
-    booking the cheapest morning slot.
+  author: marcusforsberg
+  source_url: https://github.com/marcusforsberg/ha-mathem/blob/main/blueprints/automation/mathem/mathem_local_voice.yaml
+  description: |
+    Local Swedish voice control for the Mathem cart, handled by the built-in
+    conversation agent (no LLM needed). Covers adding an item, removing an item,
+    reading the cart, asking about the next delivery, and booking the cheapest
+    morning slot.
 
-    Notes: local sentence triggers only fire on the built-in agent. If you use
-    an LLM agent, enable "Prefer handling commands locally" so these run first.
-    Local matching is skipped on follow-up turns, so say the whole command in
-    one utterance.
+    All sentences are configurable and translatable via the inputs below, so you
+    can adapt or add phrases without editing the blueprint. Sentence syntax:
+    `[optional words]`, `(alternatives|like this)`, and `{item}` captures the
+    product name.
+
+    Notes: local sentence triggers only fire on the built-in agent. If your
+    default assistant is an LLM, enable "Prefer handling commands locally" so
+    these run first. Local matching is skipped on follow-up turns, so say the
+    whole command in one utterance.
   domain: automation
   homeassistant:
     min_version: "2024.8.0"
   input:
-    profile:
-      name: Dietary profile
-      description: Profile name to use when adding items (empty = configured default).
-      default: ""
-      selector:
-        text:
-    next_delivery_sensor:
-      name: Next delivery sensor
-      description: The Mathem next-delivery sensor, used to answer "when is my delivery".
-      default: sensor.mathem_next_delivery
-      selector:
-        entity:
-          filter:
-            - integration: mathem
-              domain: sensor
+    general_settings:
+      name: General
+      icon: mdi:cog
+      input:
+        profile:
+          name: Dietary profile
+          description: Profile name to use when adding items (empty = the integration's default).
+          default: ""
+          selector:
+            text:
+        next_delivery_sensor:
+          name: Next delivery sensor
+          description: The Mathem next-delivery sensor, used to answer "when is my delivery".
+          default: sensor.mathem_next_delivery
+          selector:
+            entity:
+              filter:
+                - integration: mathem
+                  domain: sensor
+    sentence_settings:
+      name: Sentences
+      icon: mdi:chat
+      description: >-
+        Customize or translate the phrases for each command. Keep the {item}
+        wildcard where it appears; it captures the product name.
+      collapsed: true
+      input:
+        add_sentences:
+          name: Add item
+          description: Add a product to the cart. Must contain {item}.
+          selector:
+            text:
+              multiline: false
+              multiple: true
+          default:
+            - "lägg till {item} i varukorgen"
+            - "lägg till {item} på mathem"
+            - "handla {item} på mathem"
+            - "köp {item} på mathem"
+        remove_sentences:
+          name: Remove item
+          description: Remove a product from the cart by name. Must contain {item}.
+          selector:
+            text:
+              multiline: false
+              multiple: true
+          default:
+            - "ta bort {item} från varukorgen"
+        cart_sentences:
+          name: Read cart
+          description: Read the current cart contents and total.
+          selector:
+            text:
+              multiline: false
+              multiple: true
+          default:
+            - "vad ligger i varukorgen[ på mathem]"
+            - "hur mycket kostar varukorgen[ på mathem]"
+            - "visa varukorgen[ på mathem]"
+            - "summera varukorgen[ på mathem]"
+        delivery_sentences:
+          name: Next delivery
+          description: Ask when the next delivery arrives.
+          selector:
+            text:
+              multiline: false
+              multiple: true
+          default:
+            - "när kommer min leverans"
+            - "när är nästa leverans"
+            - "när kommer mathem"
+        slot_sentences:
+          name: Book cheapest slot
+          description: Book the cheapest morning delivery slot within a week.
+          selector:
+            text:
+              multiline: false
+              multiple: true
+          default:
+            - "boka billigaste leverans"
+            - "välj billigaste leveranstid"
 
 mode: queued
 max: 10
@@ -36,33 +109,19 @@ max: 10
 triggers:
   - trigger: conversation
     id: add
-    command:
-      - "lägg till {item} i varukorgen"
-      - "lägg till {item} på mathem"
-      - "handla {item} på mathem"
-      - "köp {item} på mathem"
+    command: !input add_sentences
   - trigger: conversation
     id: remove
-    command:
-      - "ta bort {item} från varukorgen"
+    command: !input remove_sentences
   - trigger: conversation
     id: cart
-    command:
-      - "vad ligger i varukorgen[ på mathem]"
-      - "hur mycket kostar varukorgen[ på mathem]"
-      - "visa varukorgen[ på mathem]"
-      - "summera varukorgen[ på mathem]"
+    command: !input cart_sentences
   - trigger: conversation
     id: delivery
-    command:
-      - "när kommer min leverans"
-      - "när är nästa leverans"
-      - "när kommer mathem"
+    command: !input delivery_sentences
   - trigger: conversation
     id: slot
-    command:
-      - "boka billigaste leverans"
-      - "välj billigaste leveranstid"
+    command: !input slot_sentences
 
 conditions: []
 
@@ -82,6 +141,7 @@ actions:
           - set_conversation_response: >-
               {% if result.status == 'added' %}
               La till {{ result.resolved_name or trigger.slots.item }}.
+              {% if result.available == false %}Obs: {{ result.availability_note or 'varan är slut' }}{% if result.has_alternatives %}, det finns alternativ{% endif %}.{% endif %}
               {% elif result.status == 'needs_disambiguation' %}
               {{ result.prompt or 'Vilken vara menar du?' }}
               {% else %}
