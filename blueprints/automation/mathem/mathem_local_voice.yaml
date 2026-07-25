@@ -4,14 +4,15 @@ blueprint:
   source_url: https://github.com/marcusforsberg/ha-mathem/blob/main/blueprints/automation/mathem/mathem_local_voice.yaml
   description: |
     Local Swedish voice control for the Mathem cart, handled by the built-in
-    conversation agent (no LLM needed). Covers adding an item, removing an item,
-    reading the cart, asking about the next delivery, and booking the cheapest
-    morning slot.
+    conversation agent (no LLM needed). Covers adding an item (optionally with a
+    quantity), changing an item's quantity, checking whether and how many of an
+    item is in the cart, removing an item, reading the cart, asking about the
+    next delivery, and booking the cheapest morning slot.
 
     All sentences are configurable and translatable via the inputs below, so you
     can adapt or add phrases without editing the blueprint. Sentence syntax:
-    `[optional words]`, `(alternatives|like this)`, and `{item}` captures the
-    product name.
+    `[optional words]`, `(alternatives|like this)`, `{item}` captures the product
+    name, and `{1..99:quantity}` captures a number.
 
     Notes: local sentence triggers only fire on the built-in agent. If your
     default assistant is an LLM, enable "Prefer handling commands locally" so
@@ -45,21 +46,44 @@ blueprint:
       icon: mdi:chat
       description: >-
         Customize or translate the phrases for each command. Keep the {item}
-        wildcard where it appears; it captures the product name.
+        wildcard where it appears; it captures the product name. Where a number
+        can be captured, {1..99:quantity} is used.
       collapsed: true
       input:
         add_sentences:
           name: Add item
-          description: Add a product to the cart. Must contain {item}.
+          description: Add a product to the cart. Contains {item}; an optional leading number sets the quantity.
           selector:
             text:
               multiline: false
               multiple: true
           default:
-            - "lägg [till ]{item} i varukorgen"
-            - "lägg till {item} på mathem"
-            - "handla {item} på mathem"
-            - "köp {item} på mathem"
+            - "lägg [till ][{1..99:quantity} ]{item} i varukorgen"
+            - "lägg till [{1..99:quantity} ]{item} på mathem"
+            - "handla [{1..99:quantity} ]{item} på mathem"
+            - "köp [{1..99:quantity} ]{item} på mathem"
+        set_quantity_sentences:
+          name: Change quantity
+          description: Set an existing cart item to an exact quantity. Contains {item} and {0..99:quantity}.
+          selector:
+            text:
+              multiline: false
+              multiple: true
+          default:
+            - "ändra {item} till {0..99:quantity}[ på mathem]"
+            - "sätt {item} till {0..99:quantity}[ på mathem]"
+            - "ändra antalet {item} till {0..99:quantity}[ på mathem]"
+        count_sentences:
+          name: Check item in cart
+          description: Ask whether, and how many of, an item is in the cart. Contains {item}.
+          selector:
+            text:
+              multiline: false
+              multiple: true
+          default:
+            - "har jag {item} i varukorgen[ på mathem]"
+            - "hur många {item} har jag i varukorgen[ på mathem]"
+            - "hur många {item} finns i varukorgen[ på mathem]"
         remove_sentences:
           name: Remove item
           description: Remove a product from the cart by name. Must contain {item}.
@@ -79,6 +103,8 @@ blueprint:
               multiple: true
           default:
             - "vad ligger i varukorgen[ på mathem]"
+            - "vad har (jag|vi) i varukorgen[ på mathem]"
+            - "vad finns i varukorgen[ på mathem]"
             - "hur mycket kostar varukorgen[ på mathem]"
             - "visa varukorgen[ på mathem]"
             - "summera varukorgen[ på mathem]"
@@ -112,6 +138,12 @@ triggers:
     id: add
     command: !input add_sentences
   - trigger: conversation
+    id: set_quantity
+    command: !input set_quantity_sentences
+  - trigger: conversation
+    id: count
+    command: !input count_sentences
+  - trigger: conversation
     id: remove
     command: !input remove_sentences
   - trigger: conversation
@@ -131,22 +163,68 @@ actions:
       profile: !input profile
       sensor_id: !input next_delivery_sensor
   - choose:
-      # --- Add an item -------------------------------------------------
+      # --- Add an item (optionally N of it) ----------------------------
       - conditions: "{{ trigger.id == 'add' }}"
         sequence:
           - action: mathem.add_item
             data:
               query: "{{ trigger.slots.item }}"
+              quantity: "{{ trigger.slots.quantity | default(1) | int(1) }}"
               profile: "{{ profile }}"
             response_variable: result
           - set_conversation_response: >-
               {% if result.status == 'added' %}
-              La till {{ result.resolved_name or trigger.slots.item }}.
+              La till {% if trigger.slots.quantity is defined %}{{ trigger.slots.quantity }} {% endif %}{{ result.resolved_name or trigger.slots.item }}.
               {% if result.available == false %}Obs: {{ result.availability_note or 'varan är slut' }}{% if result.has_alternatives %}, det finns alternativ{% endif %}.{% endif %}
               {% elif result.status == 'needs_disambiguation' %}
               {{ result.prompt or 'Vilken vara menar du?' }}
               {% else %}
               Jag kunde inte lägga till {{ trigger.slots.item }}.
+              {% endif %}
+      # --- Change an item's quantity (match a cart line by name) -------
+      - conditions: "{{ trigger.id == 'set_quantity' }}"
+        sequence:
+          - action: mathem.get_cart
+            response_variable: cart
+          - variables:
+              needle: "{{ trigger.slots.item | lower }}"
+              match: >-
+                {% set ns = namespace(line=none) %}
+                {% for line in cart.lines %}
+                  {% if needle in (line.name | lower) %}{% set ns.line = line %}{% endif %}
+                {% endfor %}
+                {{ ns.line | to_json }}
+          - if: "{{ (match | from_json) is mapping }}"
+            then:
+              - action: mathem.set_quantity
+                data:
+                  product_id: "{{ (match | from_json).product_id }}"
+                  quantity: "{{ trigger.slots.quantity | int }}"
+              - set_conversation_response: "Ändrade {{ (match | from_json).name }} till {{ trigger.slots.quantity }}."
+            else:
+              - set_conversation_response: "Jag hittade inte {{ trigger.slots.item }} i varukorgen."
+      # --- Check whether / how many of an item is in the cart ----------
+      - conditions: "{{ trigger.id == 'count' }}"
+        sequence:
+          - action: mathem.get_cart
+            response_variable: cart
+          - variables:
+              needle: "{{ trigger.slots.item | lower }}"
+              found: >-
+                {% set ns = namespace(q=0, name=none) %}
+                {% for line in cart.lines %}
+                  {% if needle in (line.name | lower) %}
+                    {% set ns.q = ns.q + (line.quantity | int) %}
+                    {% set ns.name = ns.name or line.name %}
+                  {% endif %}
+                {% endfor %}
+                {{ {'q': ns.q, 'name': ns.name} | to_json }}
+          - set_conversation_response: >-
+              {% set f = found | from_json %}
+              {% if f.q | int > 0 %}
+              Ja, {{ f.q }} stycken {{ f.name }}.
+              {% else %}
+              Nej, {{ trigger.slots.item }} ligger inte i varukorgen.
               {% endif %}
       # --- Remove an item (match a cart line by name) ------------------
       - conditions: "{{ trigger.id == 'remove' }}"

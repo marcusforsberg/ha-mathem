@@ -28,12 +28,21 @@ blueprint:
 description: >-
   Manage the user's Mathem online grocery cart. Use this whenever the user wants
   to search Mathem for a product, add an item to the Mathem cart, change an
-  item's quantity, remove an item, or check what is currently in the cart. Set
-  `action` to one of search, add, set_quantity, remove or cart. For add and
-  search, pass a free-text `query` (a product name such as "havremjölk"); for
-  set_quantity and remove, pass a numeric `product_id` obtained from a prior
-  search. The response reports the resolved product, or a needs_disambiguation
-  status with a `prompt` and `candidates` (each with a product_id and name). On
+  item's quantity, remove an item, or ask what (or how much of something) is in
+  the cart. Set `action` to one of search, add, set_quantity, remove or cart. For
+  add and search, pass a free-text `query` (a product name such as "havremjölk");
+  for set_quantity and remove, pass a numeric `product_id` obtained from a prior
+  search or from the cart.
+
+  To add several of an item, pass `quantity` with add (e.g. add "tofu" quantity
+  8). To change an item already in the cart to an exact amount (e.g. from 1 to
+  6), use set_quantity with the item's product_id and the new quantity; get the
+  product_id from action cart or a search. To answer whether the cart contains an
+  item, or how many, use action cart and read the returned `lines` (each line has
+  a name and quantity); do not guess.
+
+  The response reports the resolved product, or a needs_disambiguation status
+  with a `prompt` and `candidates` (each with a product_id and name). On
   needs_disambiguation, ask the user the prompt, list the candidates, and once
   they choose, call this tool again with action add and that candidate's
   `product_id` (add accepts either a query or a product_id). If an added item

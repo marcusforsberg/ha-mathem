@@ -319,13 +319,15 @@ Swedish phrases on the built-in conversation agent. Every phrase is an editable,
 translatable blueprint input, so you can adapt or add sentences without touching
 YAML. Defaults:
 
-| Command      | Default phrases                                                                                                     |
-| ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Add item     | `lägg [till ]{item} i varukorgen`, `lägg till {item} på mathem`, `handla {item} på mathem`, `köp {item} på mathem` |
-| Remove item  | `ta bort {item} från varukorgen`                                                                                    |
-| Read cart    | `vad ligger i varukorgen`, `hur mycket kostar varukorgen`, `visa varukorgen`, `summera varukorgen` (each with optional ` på mathem`) |
-| Next delivery| `när kommer min leverans`, `när är nästa leverans`, `när kommer mathem`                                             |
-| Book slot    | `boka billigaste leverans`, `välj billigaste leveranstid`                                                           |
+| Command         | Default phrases                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Add item        | `lägg [till ][{1..99:quantity} ]{item} i varukorgen`, plus `handla`/`köp`/`lägg till [N ]{item} på mathem`. An optional leading number sets how many, e.g. "lägg till 8 tofu i varukorgen". |
+| Change quantity | `ändra {item} till {0..99:quantity}`, `sätt {item} till N`, `ändra antalet {item} till N` (each with optional ` på mathem`)                       |
+| Check item      | `har jag {item} i varukorgen`, `hur många {item} har jag i varukorgen`, `hur många {item} finns i varukorgen` (each with optional ` på mathem`)   |
+| Remove item     | `ta bort {item} från varukorgen`, `ta bort {item} från mathem`                                                      |
+| Read cart       | `vad ligger i varukorgen`, `vad har (jag\|vi) i varukorgen`, `vad finns i varukorgen`, `hur mycket kostar varukorgen`, `visa varukorgen`, `summera varukorgen` (each with optional ` på mathem`) |
+| Next delivery   | `när kommer min leverans`, `när är nästa leverans`, `när kommer mathem`                                             |
+| Book slot       | `boka billigaste leverans`, `välj billigaste leveranstid`                                                           |
 
 Create an automation from the blueprint and set your dietary profile (optional)
 and the next-delivery sensor. It runs on the built-in **Home Assistant** agent;
