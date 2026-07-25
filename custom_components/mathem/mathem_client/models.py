@@ -441,6 +441,14 @@ class Slot:
         lo = self.local_open
         return lo.weekday() if lo else None
 
+    @property
+    def window_label(self) -> str | None:
+        """Local window as ``YYYY-MM-DD HH:MM-HH:MM`` (locale independent)."""
+        lo, lc = self.local_open, self.local_close
+        if lo is None or lc is None:
+            return None
+        return f"{lo.strftime('%Y-%m-%d %H:%M')}-{lc.strftime('%H:%M')}"
+
 
 @dataclass(slots=True)
 class SlotSelection:

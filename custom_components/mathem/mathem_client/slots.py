@@ -138,6 +138,11 @@ class SlotPage:
     from_index: int | None = None
     raw: dict[str, Any] = field(repr=False, default_factory=dict)
 
+    @property
+    def selected(self) -> Slot | None:
+        """The slot Mathem currently holds, whoever selected it."""
+        return next((s for s in self.slots if s.is_selected), None)
+
 
 class SlotsClient:
     """List delivery slots and select one on demand."""
@@ -181,6 +186,24 @@ class SlotsClient:
                 break
             from_index += NUM_DAYS
         return collected
+
+    async def get_selected(self, *, days: int = NUM_DAYS * 2) -> Slot | None:
+        """Find the slot Mathem currently holds, or ``None`` if there is none.
+
+        Reads ``isSelected`` from the slot list, so a slot booked in the Mathem
+        app or on the website is found too, not only ones selected here. Pages
+        forward up to ``days`` days and stops as soon as it finds one.
+        """
+        from_index = 0
+        pages = max(1, -(-days // NUM_DAYS))  # ceil(days / NUM_DAYS)
+        for _ in range(pages):
+            page = await self.list_slots(num_days=NUM_DAYS, from_index=from_index)
+            if (selected := page.selected) is not None:
+                return selected
+            if not page.has_later:
+                break
+            from_index += NUM_DAYS
+        return None
 
     async def set_slot(
         self,

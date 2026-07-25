@@ -398,7 +398,9 @@ def async_register_services(hass: HomeAssistant) -> None:
             raise HomeAssistantError(str(err)) from err
 
         if page.selection:
-            rt.coordinator.apply_selection(page.selection)
+            # The POST response also carries the flipped slot list, so the
+            # sensor gets the real window without waiting for the next poll.
+            rt.coordinator.apply_selection(page.selection, page.selected)
         return {
             "status": "selected",
             "selection": {

@@ -20,7 +20,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .const import CONF_PASSWORD, CONF_USERNAME, DOMAIN
 from .mathem_client import MathemAuthError, MathemClient, MathemError
-from .mathem_client.models import Cart, SlotSelection
+from .mathem_client.models import Cart, Slot, SlotSelection
 from .mathem_client.orders import OrdersResult
 from .mathem_client.models import Order
 
@@ -33,8 +33,11 @@ class MathemData:
 
     cart: Cart | None = None
     orders: OrdersResult | None = None
-    # The most recent slot selection (from set_delivery_slot). The cart-side
-    # hold is not durable, so this is display-only and may be stale/None.
+    # The slot Mathem currently holds, read from the slot list on every poll, so
+    # a slot booked in the Mathem app or on the website shows up here too.
+    selected_slot: Slot | None = None
+    # Echo from the last set_delivery_slot call. Only this carries the hold
+    # expiry, which the slot list does not expose.
     selection: SlotSelection | None = None
 
     @property
@@ -86,10 +89,29 @@ class MathemCoordinator(DataUpdateCoordinator[MathemData]):
     async def _fetch(self) -> MathemData:
         cart = await self.client.cart.get_cart()
         orders = await self.client.orders.get_orders()
-        # Preserve the last known slot selection across polls (it is not part of
-        # the cart/orders payloads and is only refreshed on set_delivery_slot).
+        selected_slot = await self._fetch_selected_slot()
+        # The hold expiry only comes from a set_delivery_slot response, so carry
+        # it across polls, but drop it once it refers to a different slot.
         selection = self.data.selection if self.data else None
-        return MathemData(cart=cart, orders=orders, selection=selection)
+        if selection is not None and selected_slot is not None and selection.id != selected_slot.id:
+            selection = None
+        return MathemData(
+            cart=cart, orders=orders, selected_slot=selected_slot, selection=selection
+        )
+
+    async def _fetch_selected_slot(self) -> Slot | None:
+        """Read the currently held slot, keeping the last value on failure.
+
+        Slot data is auxiliary, so a transient error here must not fail the
+        whole poll and blank out the cart and order sensors.
+        """
+        try:
+            return await self.client.slots.get_selected()
+        except MathemAuthError:
+            raise
+        except MathemError as err:
+            _LOGGER.debug("could not read the selected slot: %s", err)
+            return self.data.selected_slot if self.data else None
 
     async def _relogin(self) -> None:
         creds = self.config_entry.data
@@ -100,9 +122,12 @@ class MathemCoordinator(DataUpdateCoordinator[MathemData]):
         current = self.data or MathemData()
         self.async_set_updated_data(replace(current, cart=cart))
 
-    def apply_selection(self, selection: SlotSelection) -> None:
+    def apply_selection(self, selection: SlotSelection, slot: Slot | None = None) -> None:
+        """Push a slot selection returned by a mutation straight into state."""
         current = self.data or MathemData()
-        self.async_set_updated_data(replace(current, selection=selection))
+        self.async_set_updated_data(
+            replace(current, selection=selection, selected_slot=slot or current.selected_slot)
+        )
 
     def _retune_interval(self, data: MathemData) -> None:
         """Tighten the poll during the delivery window, relax it otherwise.

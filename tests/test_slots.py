@@ -101,6 +101,54 @@ def test_parse_reads_top_level_delivery_slots():
     assert page.from_index == 0
 
 
+def test_selected_reads_isselected_flag():
+    plain = _slot(1, "2026-07-26T04:00:00Z", "2026-07-26T09:00:00Z").raw
+    held = dict(_slot(2, "2026-07-26T05:00:00Z", "2026-07-26T09:00:00Z").raw)
+    held["isSelected"] = True
+    assert SlotsClient._parse({"deliverySlots": [plain, held]}).selected.id == 2
+    # Nothing held anywhere in the list.
+    assert SlotsClient._parse({"deliverySlots": [plain]}).selected is None
+
+
+def test_window_label_is_local_and_locale_free():
+    slot = _slot(1, "2026-07-26T04:00:00Z", "2026-07-26T09:00:00Z")
+    assert slot.window_label == "2026-07-26 06:00-11:00"
+
+
+class _PagedSession:
+    """Serves slot pages keyed by from-index."""
+
+    def __init__(self, pages):
+        self.pages = pages
+        self.calls = 0
+
+    async def get(self, path, *, params=None):
+        self.calls += 1
+        return self.pages[params["from-index"]]
+
+
+async def test_get_selected_pages_forward_until_found():
+    plain = _slot(1, "2026-07-26T04:00:00Z", "2026-07-26T09:00:00Z").raw
+    chosen = dict(_slot(9, "2026-07-29T04:00:00Z", "2026-07-29T09:00:00Z").raw)
+    chosen["isSelected"] = True
+    session = _PagedSession(
+        {
+            0: {"deliverySlots": [plain], "hasLater": True},
+            3: {"deliverySlots": [chosen], "hasLater": False},
+        }
+    )
+    selected = await SlotsClient(session).get_selected(days=6)
+    assert selected.id == 9
+    assert session.calls == 2
+
+
+async def test_get_selected_returns_none_and_stops_without_more_pages():
+    plain = _slot(1, "2026-07-26T04:00:00Z", "2026-07-26T09:00:00Z").raw
+    session = _PagedSession({0: {"deliverySlots": [plain], "hasLater": False}})
+    assert await SlotsClient(session).get_selected(days=6) is None
+    assert session.calls == 1  # did not keep paging
+
+
 def test_parse_falls_back_to_slotdata_nesting():
     payload = {
         "slotData": {

@@ -131,8 +131,8 @@ in person. It has no effect until the integration books a slot for you.
 
 #### Polling
 
-The integration refreshes the cart and orders on the **Poll interval** (30
-minutes by default). It automatically switches to the shorter
+The integration refreshes the cart, orders and the currently held delivery slot
+on the **Poll interval** (30 minutes by default). It automatically switches to the shorter
 **Delivery-window poll interval** (2 minutes by default) only while an active
 order is inside its delivery window or is being live tracked, so tracking stays
 current without polling hard the rest of the time.
@@ -297,7 +297,7 @@ data:
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sensor.mathem_next_delivery` | `timestamp` device class; state is the start of the next delivery window, with order number, window end, status, edit deadline and address in attributes. |
 | `sensor.mathem_cart_total`    | Cart goods total, with the fee breakdown, line count and unit count in attributes.                                                                        |
-| `sensor.mathem_selected_slot` | The slot most recently selected **through this integration** (via `set_delivery_slot`), with `hold_expires_at` for the 60 minute cart hold (display only). It is `unknown` if you have not selected a slot through the integration, even when Mathem is holding one you picked elsewhere. |
+| `sensor.mathem_selected_slot` | The delivery slot Mathem currently holds, wherever it was booked (this integration, the app or the website). State is the local window as `YYYY-MM-DD HH:MM-HH:MM`; attributes carry `slot_id`, `window_start`, `window_end`, `price` and `cutoff`. `hold_expires_at` (the 60 minute cart hold) appears only for slots booked through the integration, since Mathem exposes it only in that response. Display only. |
 | `calendar.mathem_delivery`    | Upcoming deliveries, served entirely from coordinator data.                                                                                               |
 
 ## Voice control

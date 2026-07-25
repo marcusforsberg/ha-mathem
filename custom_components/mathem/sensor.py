@@ -109,7 +109,12 @@ class MathemCartTotalSensor(MathemEntity, SensorEntity):
 
 
 class MathemSelectedSlotSensor(MathemEntity, SensorEntity):
-    """The most recently selected slot; display-only, may be stale."""
+    """The delivery slot Mathem currently holds.
+
+    Read from the slot list on every poll, so a slot booked in the Mathem app or
+    on the website is reflected too, not only ones booked through this
+    integration. Display only; nothing automates against it.
+    """
 
     _attr_name = "Selected slot"
     _attr_icon = "mdi:calendar-clock"
@@ -120,18 +125,37 @@ class MathemSelectedSlotSensor(MathemEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:
-        selection = self.coordinator.data.selection if self.coordinator.data else None
-        if selection is None:
+        data = self.coordinator.data
+        if data is None:
             return None
-        return selection.name_short or selection.name or str(selection.id)
+        if data.selected_slot is not None:
+            return data.selected_slot.window_label
+        if data.selection is not None:
+            return data.selection.name_short or data.selection.name
+        return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        selection = self.coordinator.data.selection if self.coordinator.data else None
-        if selection is None:
+        data = self.coordinator.data
+        if data is None:
             return {}
-        return {
-            "slot_id": selection.id,
-            "window": selection.name,
-            "hold_expires_at": selection.expire_at.isoformat() if selection.expire_at else None,
-        }
+        slot, selection = data.selected_slot, data.selection
+        attrs: dict[str, Any] = {}
+        if slot is not None:
+            attrs = {
+                "slot_id": slot.id,
+                "window": slot.window_label,
+                "window_start": slot.local_open.isoformat() if slot.local_open else None,
+                "window_end": slot.local_close.isoformat() if slot.local_close else None,
+                "price": slot.price,
+                "cutoff": slot.cutoff_dt.isoformat() if slot.cutoff_dt else None,
+            }
+        elif selection is not None:
+            attrs = {"slot_id": selection.id, "window": selection.name}
+        # Only the set_delivery_slot echo carries the hold expiry, and only while
+        # it still refers to the slot being displayed.
+        if selection is not None and (slot is None or selection.id == slot.id):
+            attrs["hold_expires_at"] = (
+                selection.expire_at.isoformat() if selection.expire_at else None
+            )
+        return attrs
