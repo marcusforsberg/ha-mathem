@@ -29,7 +29,6 @@ Home Assistant services and entities, with Swedish voice control in mind.
 - [Services](#services)
 - [Entities](#entities)
 - [Voice control](#voice-control)
-- [Examples](#examples)
 - [Development](#development)
 - [Architecture](#architecture)
 - [Credits](#credits)
@@ -261,51 +260,53 @@ data:
 
 ## Voice control
 
-The integration is designed to work with Home Assistant Assist. A few notes:
+Two blueprints ship with the integration under [`blueprints/`](blueprints), one
+for each style of Assist. While the repository is private, install them by
+copying the files into your Home Assistant `config/blueprints/` directory
+(preserving the `automation/mathem/` and `script/mathem/` paths); once the repo
+is public you can instead use **Settings → Automations & Scenes → Blueprints →
+Import blueprint** with the file's URL.
 
-- Local sentence triggers only fire on the built-in conversation agent. With a
-  language-model agent selected, enable **Prefer handling commands locally** so
-  local intents run first.
-- On a continued or follow-up turn, local matching is skipped, so first-utterance
-  commands are the reliable ones.
-- Test intents with `conversation.process` in **Developer Tools** before wiring
-  up voice hardware.
+The `mathem.*` services are also callable directly from your own scripts and
+automations if you prefer to build your own flows (see [Services](#services)).
 
-## Examples
+### Local sentences (no LLM)
 
-Add an item from a script and read the response:
+**Mathem: local voice control** (automation blueprint) handles a fixed set of
+Swedish phrases on the built-in conversation agent. Every phrase is an editable,
+translatable blueprint input, so you can adapt or add sentences without touching
+YAML. Defaults:
 
-```yaml
-sequence:
-  - service: mathem.add_item
-    data:
-      query: sojamjölk
-      quantity: 2
-    response_variable: result
-  - choose:
-      - conditions: "{{ result.status == 'added' }}"
-        sequence:
-          - service: notify.notify
-            data:
-              message: "La till {{ result.resolved_name }}."
-      - conditions: "{{ result.status == 'needs_disambiguation' }}"
-        sequence:
-          - service: notify.notify
-            data:
-              message: "{{ result.prompt }}"
-```
+| Command      | Default phrases                                                                                                     |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Add item     | `lägg till {item} i varukorgen`, `lägg till {item} på mathem`, `handla {item} på mathem`, `köp {item} på mathem`    |
+| Remove item  | `ta bort {item} från varukorgen`                                                                                    |
+| Read cart    | `vad ligger i varukorgen`, `hur mycket kostar varukorgen`, `visa varukorgen`, `summera varukorgen` (each with optional ` på mathem`) |
+| Next delivery| `när kommer min leverans`, `när är nästa leverans`, `när kommer mathem`                                             |
+| Book slot    | `boka billigaste leverans`, `välj billigaste leveranstid`                                                           |
 
-Pick the cheapest Saturday morning slot:
+Create an automation from the blueprint and set your dietary profile (optional)
+and the next-delivery sensor. It runs on the built-in **Home Assistant** agent;
+if your default assistant is an LLM, enable **Prefer handling commands locally**
+so these match first. Say the whole command in one utterance, local matching is
+skipped on follow-up turns.
 
-```yaml
-service: mathem.set_delivery_slot
-data:
-  predicate:
-    weekdays: [lördag]
-    open_from: "06:00"
-    open_to: "11:00"
-response_variable: slot
-```
+### Full LLM control
+
+**Mathem: full LLM control** (script blueprint) exposes a single tool to a
+language-model conversation agent, letting it search, add, change quantities,
+remove, and read the cart from free-form language with no fixed phrases. Create
+a script from the blueprint, then expose it via **Settings → Voice assistants →
+your assistant → Expose**, and make sure that assistant is an LLM agent with
+Home Assistant control enabled. The script's description and field descriptions
+are what the model uses to decide when and how to call it; it surfaces
+out-of-stock adds and disambiguation prompts so the agent can relay them.
+
+### Testing
+
+Before wiring up voice hardware, test from **Developer Tools → Actions** with
+`conversation.process`, for example `köp havremjölk på mathem` or
+`summera varukorgen`.
 
 ## Development
 
@@ -356,11 +357,12 @@ starting point for turning the synthetic fixtures into recorded ones.
 
 ## Credits
 
-This project builds on the reverse-engineering work of others in the community:
+This project builds on the work of others in the community:
 
-- [ThePSAdmin/mathemcli](https://github.com/ThePSAdmin/mathemcli)
-- [sleipner42/mathem-mcp-server](https://github.com/sleipner42/mathem-mcp-server)
-- [Malm/mathem-ai-agent-skill](https://github.com/Malm/mathem-ai-agent-skill)
+- [ThePSAdmin/mathemcli](https://github.com/ThePSAdmin/mathemcli) for the API reverse engineering
+- [sleipner42/mathem-mcp-server](https://github.com/sleipner42/mathem-mcp-server) for the API reverse engineering
+- [Malm/mathem-ai-agent-skill](https://github.com/Malm/mathem-ai-agent-skill) for the API reverse engineering
+- [TheFes/ha-blueprints](https://github.com/TheFes/ha-blueprints) for the customizable-sentence voice blueprint pattern
 
 ## License
 
