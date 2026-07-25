@@ -34,10 +34,20 @@
           "delivery_address_id": "Delivery address",
           "unattended_delivery": "Leave at door (unattended delivery)",
           "poll_minutes": "Poll interval (minutes)",
+          "delivery_day_poll_minutes": "Delivery-window poll interval (minutes)",
           "ambiguity_behaviour": "When a query is ambiguous",
           "default_profile": "Default profile",
           "filter_tokens": "Available diet filters",
           "profiles_json": "Profiles (JSON)"
+        },
+        "data_description": {
+          "delivery_address_id": "The address deliveries go to, detected automatically from your Mathem account. If you have more than one, pick it here; with a single address it is selected for you.",
+          "unattended_delivery": "When the integration books a delivery slot, this tells Mathem whether the order may be left at your door without you present. Turn it off if the delivery must be handed over in person.",
+          "poll_minutes": "How often the integration refreshes the cart and orders normally.",
+          "delivery_day_poll_minutes": "A faster refresh used only while an order is inside its delivery window or being live tracked, so tracking stays current.",
+          "ambiguity_behaviour": "What to do when a request could match several products: ask you which one, or reject it.",
+          "default_profile": "The dietary profile used when a request does not name one.",
+          "filter_tokens": "Diet filters Mathem currently supports; ticking them exposes them for use in profiles."
         }
       }
     },

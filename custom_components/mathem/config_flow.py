@@ -25,6 +25,7 @@ from .const import (
     CONF_AMBIGUITY,
     CONF_DEFAULT_PROFILE,
     CONF_DELIVERY_ADDRESS_ID,
+    CONF_DELIVERY_DAY_POLL_MINUTES,
     CONF_FILTER_TOKENS,
     CONF_PASSWORD,
     CONF_POLL_MINUTES,
@@ -33,6 +34,7 @@ from .const import (
     CONF_USERNAME,
     AMBIGUITY_ASK,
     AMBIGUITY_REJECT,
+    DEFAULT_DELIVERY_DAY_POLL_MINUTES,
     DEFAULT_POLL_MINUTES,
     DOMAIN,
     FILTER_PROBE_QUERIES,
@@ -139,6 +141,9 @@ class MathemOptionsFlow(OptionsFlow):
                     CONF_DELIVERY_ADDRESS_ID: user_input.get(CONF_DELIVERY_ADDRESS_ID),
                     CONF_UNATTENDED: user_input.get(CONF_UNATTENDED, True),
                     CONF_POLL_MINUTES: user_input.get(CONF_POLL_MINUTES, DEFAULT_POLL_MINUTES),
+                    CONF_DELIVERY_DAY_POLL_MINUTES: user_input.get(
+                        CONF_DELIVERY_DAY_POLL_MINUTES, DEFAULT_DELIVERY_DAY_POLL_MINUTES
+                    ),
                     CONF_DEFAULT_PROFILE: user_input.get(CONF_DEFAULT_PROFILE) or None,
                     CONF_AMBIGUITY: user_input.get(CONF_AMBIGUITY, AMBIGUITY_ASK),
                     CONF_FILTER_TOKENS: user_input.get(CONF_FILTER_TOKENS, []),
@@ -168,6 +173,12 @@ class MathemOptionsFlow(OptionsFlow):
             vol.Optional(CONF_POLL_MINUTES, default=options.get(CONF_POLL_MINUTES, DEFAULT_POLL_MINUTES))
         ] = vol.All(int, vol.Range(min=1, max=180))
         schema_dict[
+            vol.Optional(
+                CONF_DELIVERY_DAY_POLL_MINUTES,
+                default=options.get(CONF_DELIVERY_DAY_POLL_MINUTES, DEFAULT_DELIVERY_DAY_POLL_MINUTES),
+            )
+        ] = vol.All(int, vol.Range(min=1, max=60))
+        schema_dict[
             vol.Optional(CONF_AMBIGUITY, default=options.get(CONF_AMBIGUITY, AMBIGUITY_ASK))
         ] = vol.In({AMBIGUITY_ASK: "Ask", AMBIGUITY_REJECT: "Reject"})
         if profile_names:
@@ -185,16 +196,25 @@ class MathemOptionsFlow(OptionsFlow):
         )
 
     async def _live_choices(self) -> tuple[dict[int, str], dict[str, str]]:
-        """Fetch address options and the filter vocabulary; empty on failure."""
+        """Fetch address options and the filter vocabulary; empty on failure.
+
+        Addresses are read from the slot picker (which lists the account's
+        delivery addresses) and the cart, so the address field is a populated
+        picker with no manual lookup required.
+        """
         session = MathemSession(async_get_clientsession(self.hass))
         client = MathemClient(session)
         addresses: dict[int, str] = {}
         vocab: dict[str, str] = {}
-        try:
-            cart_raw = await session.get("/cart/", params={"group-by": "recipes"})
-            addresses = extract_addresses(cart_raw)
-        except MathemError as err:
-            _LOGGER.debug("could not read addresses: %s", err)
+        for path, params in (
+            ("/slot-picker/slots/", {"num-days": 3, "from-index": 0}),
+            ("/cart/", {"group-by": "recipes"}),
+        ):
+            try:
+                raw = await session.get(path, params=params)
+                addresses.update(extract_addresses(raw))
+            except MathemError as err:
+                _LOGGER.debug("could not read addresses from %s: %s", path, err)
         try:
             vocab = await client.products.discover_filters(FILTER_PROBE_QUERIES)
         except MathemError as err:

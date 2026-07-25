@@ -14,6 +14,7 @@ CONF_PASSWORD = "password"  # noqa: S105 - config key name, not a secret value
 CONF_DELIVERY_ADDRESS_ID = "delivery_address_id"
 CONF_UNATTENDED = "unattended_delivery"
 CONF_POLL_MINUTES = "poll_minutes"
+CONF_DELIVERY_DAY_POLL_MINUTES = "delivery_day_poll_minutes"
 CONF_DEFAULT_PROFILE = "default_profile"
 CONF_AMBIGUITY = "ambiguity_behaviour"
 CONF_FILTER_TOKENS = "filter_tokens"
@@ -23,10 +24,13 @@ CONF_PROFILES = "profiles"
 AMBIGUITY_ASK = "ask"
 AMBIGUITY_REJECT = "reject"
 
-# Polling.
+# Polling. The base interval is used normally; the shorter delivery-day
+# interval kicks in while an order is inside its delivery window or being live
+# tracked. Both are configurable; these are the defaults.
 DEFAULT_POLL_MINUTES = 30
+DEFAULT_DELIVERY_DAY_POLL_MINUTES = 2
 BASE_POLL_INTERVAL = timedelta(minutes=DEFAULT_POLL_MINUTES)
-DELIVERY_DAY_POLL_INTERVAL = timedelta(minutes=2)
+DELIVERY_DAY_POLL_INTERVAL = timedelta(minutes=DEFAULT_DELIVERY_DAY_POLL_MINUTES)
 
 # Pantry alias storage.
 STORAGE_KEY = "mathem_pantry"

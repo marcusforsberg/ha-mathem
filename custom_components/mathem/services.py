@@ -23,6 +23,7 @@ from homeassistant.core import (
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
+from .config_helpers import extract_addresses
 from .const import DOMAIN
 from .data import MathemConfigEntry, MathemRuntime
 from .mathem_client import MathemError, ResolveStatus, SlotPredicate, cheapest_matching
@@ -359,16 +360,25 @@ def async_register_services(hass: HomeAssistant) -> None:
 
     async def set_delivery_slot(call: ServiceCall) -> ServiceResponse:
         rt = _runtime(hass)
-        if rt.delivery_address_id is None:
-            raise ServiceValidationError(
-                "No delivery address configured; set one in the integration options"
-            )
         slot_id = call.data.get("slot_id")
         predicate_raw = call.data.get("predicate")
         if (slot_id is None) == (predicate_raw is None):
             raise ServiceValidationError("Provide exactly one of slot_id or predicate")
 
         try:
+            # A slot list is needed for a predicate, and doubles as the source
+            # for auto-detecting the delivery address when none is configured.
+            page = await rt.client.slots.list_slots(num_days=3, from_index=0)
+            address_id = rt.delivery_address_id
+            if address_id is None:
+                detected = extract_addresses(page.raw)
+                if not detected:
+                    raise ServiceValidationError(
+                        "No delivery address found on the account; set one in the "
+                        "integration options"
+                    )
+                address_id = next(iter(detected))
+
             if predicate_raw is not None:
                 predicate = SlotPredicate.from_dict(predicate_raw)
                 slots = await rt.client.slots.list_slots_range(days=call.data["days"])
@@ -383,7 +393,7 @@ def async_register_services(hass: HomeAssistant) -> None:
             page = await rt.client.slots.set_slot(
                 slot_id,
                 is_unattended=rt.unattended,
-                delivery_address_id=rt.delivery_address_id,
+                delivery_address_id=address_id,
             )
         except MathemError as err:
             raise HomeAssistantError(str(err)) from err

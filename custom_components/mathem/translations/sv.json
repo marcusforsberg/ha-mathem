@@ -34,10 +34,20 @@
           "delivery_address_id": "Leveransadress",
           "unattended_delivery": "Lämna vid dörren (obemannad leverans)",
           "poll_minutes": "Avläsningsintervall (minuter)",
+          "delivery_day_poll_minutes": "Avläsningsintervall under leveransfönster (minuter)",
           "ambiguity_behaviour": "När en sökning är tvetydig",
           "default_profile": "Standardprofil",
           "filter_tokens": "Tillgängliga kostfilter",
           "profiles_json": "Profiler (JSON)"
+        },
+        "data_description": {
+          "delivery_address_id": "Adressen som leveranser går till, hämtas automatiskt från ditt Mathem-konto. Har du flera väljer du här; med en enda adress väljs den åt dig.",
+          "unattended_delivery": "När integrationen bokar en leveranstid anger detta om ordern får lämnas vid dörren utan att du är hemma. Stäng av om leveransen måste överlämnas personligen.",
+          "poll_minutes": "Hur ofta integrationen normalt uppdaterar varukorg och beställningar.",
+          "delivery_day_poll_minutes": "En snabbare uppdatering som bara används medan en order är inom sitt leveransfönster eller spåras live, så att spårningen hålls aktuell.",
+          "ambiguity_behaviour": "Vad som händer när en sökning kan matcha flera produkter: fråga vilken, eller neka.",
+          "default_profile": "Kostprofilen som används när en begäran inte anger någon.",
+          "filter_tokens": "Kostfilter som Mathem stöder just nu; kryssa i dem för att kunna använda dem i profiler."
         }
       }
     },

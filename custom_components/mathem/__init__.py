@@ -18,11 +18,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import (
     CONF_DEFAULT_PROFILE,
     CONF_DELIVERY_ADDRESS_ID,
+    CONF_DELIVERY_DAY_POLL_MINUTES,
     CONF_PASSWORD,
     CONF_POLL_MINUTES,
     CONF_PROFILES,
     CONF_UNATTENDED,
     CONF_USERNAME,
+    DEFAULT_DELIVERY_DAY_POLL_MINUTES,
     DEFAULT_POLL_MINUTES,
     DOMAIN,
     PLATFORMS,
@@ -60,9 +62,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: MathemConfigEntry) -> bo
     profiles = build_profiles(entry.options.get(CONF_PROFILES, {}))
     default_profile = entry.options.get(CONF_DEFAULT_PROFILE) or default_profile_name(profiles)
 
-    coordinator = MathemCoordinator(hass, entry, client)
-    poll_minutes = entry.options.get(CONF_POLL_MINUTES, DEFAULT_POLL_MINUTES)
-    coordinator.update_interval = timedelta(minutes=poll_minutes)
+    base_interval = timedelta(
+        minutes=entry.options.get(CONF_POLL_MINUTES, DEFAULT_POLL_MINUTES)
+    )
+    delivery_interval = timedelta(
+        minutes=entry.options.get(
+            CONF_DELIVERY_DAY_POLL_MINUTES, DEFAULT_DELIVERY_DAY_POLL_MINUTES
+        )
+    )
+    coordinator = MathemCoordinator(
+        hass, entry, client, base_interval=base_interval, delivery_interval=delivery_interval
+    )
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = MathemRuntime(
