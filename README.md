@@ -295,7 +295,7 @@ YAML. Defaults:
 
 | Command      | Default phrases                                                                                                     |
 | ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Add item     | `lägg till {item} i varukorgen`, `lägg till {item} på mathem`, `handla {item} på mathem`, `köp {item} på mathem`    |
+| Add item     | `lägg [till ]{item} i varukorgen`, `lägg till {item} på mathem`, `handla {item} på mathem`, `köp {item} på mathem` |
 | Remove item  | `ta bort {item} från varukorgen`                                                                                    |
 | Read cart    | `vad ligger i varukorgen`, `hur mycket kostar varukorgen`, `visa varukorgen`, `summera varukorgen` (each with optional ` på mathem`) |
 | Next delivery| `när kommer min leverans`, `när är nästa leverans`, `när kommer mathem`                                             |

@@ -56,7 +56,7 @@ blueprint:
               multiline: false
               multiple: true
           default:
-            - "lägg till {item} i varukorgen"
+            - "lägg [till ]{item} i varukorgen"
             - "lägg till {item} på mathem"
             - "handla {item} på mathem"
             - "köp {item} på mathem"
