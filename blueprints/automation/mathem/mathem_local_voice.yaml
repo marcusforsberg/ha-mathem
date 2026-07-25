@@ -69,6 +69,7 @@ blueprint:
               multiple: true
           default:
             - "ta bort {item} från varukorgen"
+            - "ta bort {item} från mathem"
         cart_sentences:
           name: Read cart
           description: Read the current cart contents and total.
