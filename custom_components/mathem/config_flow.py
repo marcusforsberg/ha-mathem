@@ -20,6 +20,12 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .const import (
     CONF_AMBIGUITY,
@@ -137,8 +143,15 @@ class MathemOptionsFlow(OptionsFlow):
                     _LOGGER.warning("invalid profiles JSON: %s", err)
                     errors["base"] = "invalid_profiles"
             if not errors:
+                # The dropdown submits a string; store an int so consumers do
+                # not have to care which widget produced the value.
+                raw_address = user_input.get(CONF_DELIVERY_ADDRESS_ID)
+                try:
+                    address_id = int(raw_address) if raw_address not in (None, "") else None
+                except (TypeError, ValueError):
+                    address_id = None
                 new_options = {
-                    CONF_DELIVERY_ADDRESS_ID: user_input.get(CONF_DELIVERY_ADDRESS_ID),
+                    CONF_DELIVERY_ADDRESS_ID: address_id,
                     CONF_UNATTENDED: user_input.get(CONF_UNATTENDED, True),
                     CONF_POLL_MINUTES: user_input.get(CONF_POLL_MINUTES, DEFAULT_POLL_MINUTES),
                     CONF_DELIVERY_DAY_POLL_MINUTES: user_input.get(
@@ -157,12 +170,18 @@ class MathemOptionsFlow(OptionsFlow):
 
         schema_dict: dict[Any, Any] = {}
         if address_options:
-            schema_dict[
-                vol.Optional(
-                    CONF_DELIVERY_ADDRESS_ID,
-                    default=options.get(CONF_DELIVERY_ADDRESS_ID) or next(iter(address_options)),
+            # Option values are strings: the frontend round-trips a selection as
+            # a string, so int keys would never match the stored value and the
+            # dropdown would reopen with nothing selected. Saving coerces back.
+            schema_dict[vol.Optional(CONF_DELIVERY_ADDRESS_ID)] = SelectSelector(
+                SelectSelectorConfig(
+                    options=[
+                        SelectOptionDict(value=str(addr_id), label=label)
+                        for addr_id, label in address_options.items()
+                    ],
+                    mode=SelectSelectorMode.DROPDOWN,
                 )
-            ] = vol.In(address_options)
+            )
         else:
             schema_dict[
                 vol.Optional(CONF_DELIVERY_ADDRESS_ID, default=options.get(CONF_DELIVERY_ADDRESS_ID))
@@ -191,9 +210,15 @@ class MathemOptionsFlow(OptionsFlow):
             ] = cv_multi_select(filter_vocab)
         schema_dict[vol.Optional("profiles_json", default="")] = str
 
-        return self.async_show_form(
-            step_id="init", data_schema=vol.Schema(schema_dict), errors=errors
-        )
+        schema = vol.Schema(schema_dict)
+        if address_options:
+            # Preselect the saved address, else the primary one (listed first).
+            current = options.get(CONF_DELIVERY_ADDRESS_ID)
+            selected = current if current in address_options else next(iter(address_options))
+            schema = self.add_suggested_values_to_schema(
+                schema, {CONF_DELIVERY_ADDRESS_ID: str(selected)}
+            )
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
 
     async def _live_choices(self) -> tuple[dict[int, str], dict[str, str]]:
         """Fetch address options and the filter vocabulary; empty on failure.
@@ -206,15 +231,26 @@ class MathemOptionsFlow(OptionsFlow):
         client = MathemClient(session)
         addresses: dict[int, str] = {}
         vocab: dict[str, str] = {}
+        # The slot picker lists every address on the account; the cart only
+        # exposes the active one, so it is a fallback rather than a second call.
         for path, params in (
             ("/slot-picker/slots/", {"num-days": 3, "from-index": 0}),
             ("/cart/", {"group-by": "recipes"}),
         ):
             try:
                 raw = await session.get(path, params=params)
-                addresses.update(extract_addresses(raw))
             except MathemError as err:
-                _LOGGER.debug("could not read addresses from %s: %s", path, err)
+                _LOGGER.warning("Mathem: could not read addresses from %s: %s", path, err)
+                continue
+            addresses.update(extract_addresses(raw))
+            if addresses:
+                break
+        if not addresses:
+            # Without this the address field silently degrades to manual id entry.
+            _LOGGER.warning(
+                "Mathem: no delivery addresses could be read from the account; "
+                "the delivery address must be entered manually"
+            )
         try:
             vocab = await client.products.discover_filters(FILTER_PROBE_QUERIES)
         except MathemError as err:

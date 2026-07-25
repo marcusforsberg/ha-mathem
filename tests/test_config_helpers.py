@@ -1,31 +1,88 @@
-"""Delivery-address extraction used by the config flow's auto-detected picker."""
+"""Delivery-address extraction used by the config flow's auto-detected picker.
+
+The payloads here mirror what the live API returns.
+"""
 
 from __future__ import annotations
 
 from config_helpers import extract_addresses
 
+# Verbatim shape from GET /slot-picker/slots/ (names/ids are the real fields).
+SLOT_PICKER = {
+    "deliverySlots": [],
+    "deliveryAddresses": [
+        {
+            "id": 10000001,
+            "addressDisplay": "Testgatan 2",
+            "addressDisplayFull": "Testgatan 2, 111 11 Stockholm",
+            "isPrimary": True,
+            "recipientName": "Test Person",
+            "isDeliveryAvailable": True,
+            "userSpecifiedName": None,
+            "isBoatDelivery": False,
+        },
+        {
+            "id": 10000002,
+            "addressDisplay": "Andra Vägen 5",
+            "addressDisplayFull": "Andra Vägen 5, 222 22 Exempelby",
+            "isPrimary": False,
+            "recipientName": "Test Person",
+            "isDeliveryAvailable": True,
+            "userSpecifiedName": None,
+            "isBoatDelivery": False,
+        },
+    ],
+}
 
-def test_extracts_from_slot_picker_top_level():
-    payload = {
-        "deliverySlots": [],
-        "deliveryAddresses": [
-            {"id": 10000001, "streetAddress": "Testgatan 2", "zipCode": "111 11", "city": "Stockholm"},
-            {"id": 99, "street": "Testgatan 2", "city": "Stockholm"},
-        ],
+
+def test_extracts_both_addresses_from_slot_picker():
+    addresses = extract_addresses(SLOT_PICKER)
+    assert addresses == {
+        10000001: "Testgatan 2, 111 11 Stockholm",
+        10000002: "Andra Vägen 5, 222 22 Exempelby",
     }
-    addresses = extract_addresses(payload)
-    assert addresses[10000001] == "Testgatan 2, 111 11, Stockholm"
-    assert addresses[99] == "Testgatan 2, Stockholm"
 
 
-def test_extracts_from_cart_info():
-    payload = {"cartInfo": {"deliveryAddress": {"id": 7, "streetAddress": "Gata 1", "city": "Ort"}}}
-    assert extract_addresses(payload) == {7: "Gata 1, Ort"}
+def test_primary_address_is_listed_first():
+    # Insertion order decides the picker's default, so primary must lead even
+    # when the payload lists it second.
+    reversed_payload = {"deliveryAddresses": list(reversed(SLOT_PICKER["deliveryAddresses"]))}
+    assert list(extract_addresses(reversed_payload)) == [10000001, 10000002]
 
 
-def test_container_entry_with_only_a_name_is_still_picked_up():
-    payload = {"deliveryAddresses": [{"id": 3, "displayName": "Hemma"}]}
-    assert extract_addresses(payload) == {3: "Hemma"}
+def test_extracts_active_address_from_cart_info():
+    payload = {
+        "cartInfo": {
+            "deliveryAddress": {
+                "id": 10000001,
+                "addressDisplay": "Testgatan 2",
+                "addressDisplayFull": "Testgatan 2, 111 11 Stockholm",
+                "isPrimary": True,
+            }
+        }
+    }
+    assert extract_addresses(payload) == {10000001: "Testgatan 2, 111 11 Stockholm"}
+
+
+def test_nickname_and_unavailable_are_surfaced():
+    payload = {
+        "deliveryAddresses": [
+            {
+                "id": 1,
+                "addressDisplayFull": "Testgatan 2, 111 11 Stockholm",
+                "userSpecifiedName": "Sommarstuga",
+                "isDeliveryAvailable": False,
+            }
+        ]
+    }
+    label = extract_addresses(payload)[1]
+    assert "Sommarstuga" in label
+    assert "delivery unavailable" in label
+
+
+def test_falls_back_to_street_zip_city_shape():
+    payload = {"deliveryAddresses": [{"id": 7, "street": "Gata 1", "zipCode": "111 11", "city": "Ort"}]}
+    assert extract_addresses(payload) == {7: "Gata 1, 111 11, Ort"}
 
 
 def test_unrelated_id_name_objects_are_not_mistaken_for_addresses():
@@ -36,3 +93,4 @@ def test_unrelated_id_name_objects_are_not_mistaken_for_addresses():
 
 def test_empty_when_nothing_addresslike():
     assert extract_addresses({"foo": "bar"}) == {}
+    assert extract_addresses({"deliveryAddresses": None}) == {}
