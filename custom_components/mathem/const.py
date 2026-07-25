@@ -41,4 +41,4 @@ STORAGE_VERSION = 1
 # tokens applicable to a result set come back per query.
 FILTER_PROBE_QUERIES = ("mjölk", "bröd", "ris", "tomat")
 
-PLATFORMS = ["sensor", "calendar"]
+PLATFORMS = ["sensor", "calendar", "button"]
