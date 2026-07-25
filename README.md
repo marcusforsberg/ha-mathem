@@ -32,6 +32,7 @@ in mind.
 - [Services](#services)
 - [Entities](#entities)
 - [Voice control](#voice-control)
+- [Agent skill](#agent-skill)
 - [Development](#development)
 - [Architecture](#architecture)
 - [Credits](#credits)
@@ -354,6 +355,16 @@ out-of-stock adds and disambiguation prompts so the agent can relay them.
 Before wiring up voice hardware, test from **Developer Tools → Actions** with
 `conversation.process`, for example `köp havremjölk på mathem` or
 `summera varukorgen`.
+
+## Agent skill
+
+An agent skill lives in [`.claude/skills/mathem`](.claude/skills/mathem). It
+documents every service, field schema and response shape, the resolver tiers and
+the pantry entry kinds, so an agent can fill the cart, correct quantities, book a
+delivery slot or answer what an order will cost without probing the integration
+first. It is designed to be used with
+[ha-mcp](https://github.com/homeassistant-ai/ha-mcp), which gives an agent access
+to Home Assistant's services. Add it to whichever client you use as needed.
 
 ## Development
 
