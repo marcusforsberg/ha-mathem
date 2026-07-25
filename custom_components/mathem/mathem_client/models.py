@@ -304,6 +304,24 @@ class CartLine:
             raw=data,
         )
 
+    @property
+    def is_available(self) -> bool | None:
+        """``isAvailable`` for the line, or ``None`` when unknown."""
+        if isinstance(self.availability, dict):
+            return self.availability.get("isAvailable")
+        return None
+
+    @property
+    def availability_note(self) -> str | None:
+        """Human note for an unavailable line, e.g. 'Slut hos leverantör'."""
+        if isinstance(self.availability, dict):
+            return (
+                self.availability.get("descriptionShort")
+                or self.availability.get("description")
+                or None
+            )
+        return None
+
 
 @dataclass(slots=True)
 class Cart:

@@ -80,6 +80,44 @@ def test_classification_excludes_prismatch_tree():
     assert 134 in ids
 
 
+def test_cart_line_availability_helpers():
+    payload = {
+        "productQuantityCount": 1,
+        "groups": [
+            {
+                "items": [
+                    {
+                        "itemId": 1,
+                        "product": make_product(83, "Laoganma Krispig Chili"),
+                        "quantity": 1,
+                        "availability": {
+                            "isAvailable": False,
+                            "description": "Slut hos leverantör",
+                            "descriptionShort": "Slut hos leverantör",
+                            "code": "sold_out_supplier",
+                        },
+                        "hasAlternativeProducts": True,
+                    },
+                    {
+                        "itemId": 2,
+                        "product": make_product(65962, "Alpro Sojadryck Protein"),
+                        "quantity": 1,
+                        "availability": {"isAvailable": True, "code": "available"},
+                        "hasAlternativeProducts": False,
+                    },
+                ]
+            }
+        ],
+    }
+    cart = Cart.from_api(payload)
+    sold_out, available = cart.lines
+    assert sold_out.is_available is False
+    assert sold_out.availability_note == "Slut hos leverantör"
+    assert sold_out.has_alternative_products is True
+    assert available.is_available is True
+    assert available.availability_note is None
+
+
 def test_promotion_block_passthrough_verbatim():
     detail = ProductDetail.from_api(
         make_detail(1, "X", promotion={"title": "2 för 25", "displayStyle": "price_match"})

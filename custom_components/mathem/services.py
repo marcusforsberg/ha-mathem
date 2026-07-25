@@ -139,11 +139,25 @@ def _cart_dict(cart: Cart) -> dict[str, Any]:
                 "discounted_quantity": line.discounted_quantity,
                 "display_price_total": line.display_price_total,
                 "availability": line.availability,
+                "available": line.is_available,
+                "availability_note": line.availability_note,
                 "has_alternative_products": line.has_alternative_products,
                 **line.product.promotion_block(),
             }
             for line in cart.lines
         ],
+    }
+
+
+def _added_line_info(cart: Cart, product_id: int) -> dict[str, Any]:
+    """Availability of a just-added line, so callers can flag out-of-stock adds."""
+    line = next((line for line in cart.lines if line.product.id == product_id), None)
+    if line is None:
+        return {"available": None, "availability_note": None, "has_alternatives": None}
+    return {
+        "available": line.is_available,
+        "availability_note": line.availability_note,
+        "has_alternatives": line.has_alternative_products,
     }
 
 
@@ -235,6 +249,7 @@ def async_register_services(hass: HomeAssistant) -> None:
                     "status": "added",
                     "product_id": product_id,
                     "quantity": quantity,
+                    **_added_line_info(cart, product_id),
                     "cart": _cart_dict(cart),
                 }
 
@@ -252,6 +267,7 @@ def async_register_services(hass: HomeAssistant) -> None:
                 "tier": result.tier,
                 "resolved_name": result.candidate.name if result.candidate else None,
                 "warnings": result.warnings,
+                **_added_line_info(cart, result.product_id),  # type: ignore[arg-type]
                 "cart": _cart_dict(cart),
             }
         except MathemError as err:
