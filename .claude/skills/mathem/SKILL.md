@@ -207,6 +207,7 @@ before float to the top of search results and are flagged. When a user says
 | `sensor.mathem_cart_total` | Goods total. Attributes: `total_gross_amount`, `summary_lines`, `line_count`, `unit_count`, `currency`. |
 | `sensor.mathem_selected_slot` | The slot Mathem currently holds, wherever it was booked (integration, app or website); read from the slot list on every poll. State is the local window as `YYYY-MM-DD HH:MM-HH:MM`. Attributes: `slot_id`, `window`, `window_start`, `window_end`, `price`, `cutoff`, and `hold_expires_at` for the 60 minute cart hold, which Mathem only returns for slots booked through the integration. Display only. |
 | `calendar.mathem_delivery` | Upcoming deliveries. |
+| `button.mathem_resync` | Press (`button.press`) to refresh the cart, orders and held slot at once. Use it when the cart may have been changed in the Mathem app and you want the entities current before reading them; service calls already return fresh data, so it is not needed after a mutation. |
 
 ## Voice control and blueprints
 

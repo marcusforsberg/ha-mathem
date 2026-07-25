@@ -299,6 +299,7 @@ data:
 | `sensor.mathem_cart_total`    | Cart goods total, with the fee breakdown, line count and unit count in attributes.                                                                        |
 | `sensor.mathem_selected_slot` | The delivery slot Mathem currently holds, wherever it was booked (this integration, the app or the website). State is the local window as `YYYY-MM-DD HH:MM-HH:MM`; attributes carry `slot_id`, `window_start`, `window_end`, `price` and `cutoff`. `hold_expires_at` (the 60 minute cart hold) appears only for slots booked through the integration, since Mathem exposes it only in that response. Display only. |
 | `calendar.mathem_delivery`    | Upcoming deliveries, served entirely from coordinator data.                                                                                               |
+| `button.mathem_resync`        | Refreshes the cart, orders and held slot immediately, for when something changed in the Mathem app and you do not want to wait for the next poll. Categorised as diagnostic, so it appears in the device's Diagnostics card. |
 
 ## Voice control
 
