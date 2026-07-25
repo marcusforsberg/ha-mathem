@@ -101,7 +101,7 @@ async def run(query: str, record_dir: Path | None, add_id: int | None) -> None:
         _dump(record_dir, "product_detail", detail.raw)
         print(f"  ingredients: {detail.ingredients_text}")
         print(f"  allergens:   {detail.allergens_text}")
-        print(f"  categories:  {[c.name for c in detail.classification_categories()]}")
+        print(f"  categories:  {[(c.id, c.name) for c in detail.classification_categories()]}")
         print()
 
         # --- cart (read only unless --add) -------------------------------
@@ -139,6 +139,24 @@ async def run(query: str, record_dir: Path | None, add_id: int | None) -> None:
                 lc = slot.local_close.strftime("%H:%M") if slot.local_close else "?"
                 flags = "FULL" if slot.is_full else ("N/A" if slot.is_unavailable else "ok")
                 print(f"    {slot.id:>9}  {lo}-{lc}  {slot.price!s:>5} kr  [{flags}]")
+        print()
+
+        # --- delivery addresses (the 'Leveransadress' id in options) -----
+        print("Delivery addresses (put the id in the integration options):")
+        addrs = page.raw.get("deliveryAddresses") or []
+        if not isinstance(addrs, list):
+            addrs = [addrs]
+        if not addrs:
+            print("  (none found in slot-picker response)")
+        for a in addrs:
+            if isinstance(a, dict):
+                label = (
+                    a.get("streetAddress") or a.get("street") or a.get("addressLine1")
+                    or a.get("name") or a.get("displayName") or ""
+                )
+                print(f"    id={a.get('id')}  {label}")
+            else:
+                print(f"    {a}")
         print()
 
         # --- orders / next delivery --------------------------------------
