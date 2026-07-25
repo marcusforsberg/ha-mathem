@@ -4,10 +4,10 @@
   "codeowners": ["@marcusforsberg"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/marcus/ha-mathem",
+  "documentation": "https://github.com/marcusforsberg/ha-mathem",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/marcus/ha-mathem/issues",
+  "issue_tracker": "https://github.com/marcusforsberg/ha-mathem/issues",
   "requirements": [],
   "version": "0.1.0"
 }

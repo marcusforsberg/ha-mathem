@@ -1,0 +1,29 @@
+name: Release
+
+# Opens (and keeps updating) a release pull request based on Conventional
+# Commits. Merging that PR tags the version, publishes a GitHub release, which
+# is what HACS reads to offer an update, and updates CHANGELOG.md, the
+# integration manifest version and pyproject.toml.
+#
+# The first release is pinned to 1.0.0 by "release-as" in
+# release-please-config.json. Remove that key once v1.0.0 is published,
+# otherwise every later release keeps trying to be 1.0.0.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

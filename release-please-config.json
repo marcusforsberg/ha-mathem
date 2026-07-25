@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "0b37d4f36d307d82b3ba4cffc5521ef1726a4d9e",
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "ha-mathem",
+      "changelog-path": "CHANGELOG.md",
+      "release-as": "1.0.0",
+      "include-component-in-tag": false,
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "custom_components/mathem/manifest.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "generic",
+          "path": "pyproject.toml"
+        }
+      ]
+    }
+  }
+}

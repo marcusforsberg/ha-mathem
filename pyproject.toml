@@ -1,6 +1,6 @@
 [project]
 name = "ha-mathem"
-version = "0.1.0"
+version = "0.1.0" # x-release-please-version
 description = "Home Assistant integration for Mathem, plus a standalone Mathem API client"
 requires-python = ">=3.12"
 

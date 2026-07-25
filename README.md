@@ -390,6 +390,28 @@ export MATHEM_PASS="..."          # or leave unset to be prompted securely
 Add `--record tests/fixtures` to dump the raw JSON payloads, which is the
 starting point for turning the synthetic fixtures into recorded ones.
 
+### Releasing
+
+Releases are automated with
+[release-please](https://github.com/googleapis/release-please) and driven by
+[Conventional Commits](https://www.conventionalcommits.org/), so commit messages
+decide the version bump: `fix:` gives a patch, `feat:` a minor, and a `!` or a
+`BREAKING CHANGE:` footer a major.
+
+Pushing to `main` opens or updates a release pull request. Merging that pull
+request is what publishes: it tags the version, creates the GitHub release that
+HACS reads to offer an update, writes `CHANGELOG.md`, and bumps the version in
+both `custom_components/mathem/manifest.json` and `pyproject.toml`.
+
+> [!NOTE]
+> The first release is pinned to `1.0.0` by `release-as` in
+> `release-please-config.json`. Remove that key once v1.0.0 is published, or
+> every later release will keep trying to be 1.0.0.
+
+Every push and pull request is also validated by the HACS action and by
+Home Assistant's `hassfest`, which check the publishing requirements and the
+integration manifest.
+
 ## Architecture
 
 - **Vendored client, not a pip requirement.** The client stays a subpackage so
