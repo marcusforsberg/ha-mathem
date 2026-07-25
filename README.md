@@ -403,11 +403,6 @@ request is what publishes: it tags the version, creates the GitHub release that
 HACS reads to offer an update, writes `CHANGELOG.md`, and bumps the version in
 both `custom_components/mathem/manifest.json` and `pyproject.toml`.
 
-> [!NOTE]
-> The first release is pinned to `1.0.0` by `release-as` in
-> `release-please-config.json`. Remove that key once v1.0.0 is published, or
-> every later release will keep trying to be 1.0.0.
-
 Every push and pull request is also validated by the HACS action and by
 Home Assistant's `hassfest`, which check the publishing requirements and the
 integration manifest.

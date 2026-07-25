@@ -6,7 +6,6 @@
       "release-type": "simple",
       "package-name": "ha-mathem",
       "changelog-path": "CHANGELOG.md",
-      "release-as": "1.0.0",
       "include-component-in-tag": false,
       "extra-files": [
         {
