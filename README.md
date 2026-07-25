@@ -13,7 +13,9 @@ in mind.
 > personal use**. It talks to Mathem's private web API, which can change or
 > break at any time. Read Mathem's
 > [terms of service](https://www.mathem.se/) and make sure you are comfortable
-> with them before using this yourself. You use it at your own risk.
+> with them before using this yourself. The author makes no commitment to
+> keeping it up to date or working as Mathem's API changes. You use it at your
+> own risk.
 
 ---
 
@@ -101,15 +103,39 @@ logs in again on each Home Assistant restart.
 
 Open the integration and choose **Configure** to set:
 
-| Option                        | Description                                                                                    |
-| ----------------------------- | ---------------------------------------------------------------------------------------------- |
-| **Delivery address**          | Picked from the addresses on your account. Falls back to manual id entry if none can be read.  |
-| **Leave at door**             | Whether deliveries are unattended (left at the door).                                          |
-| **Poll interval**             | Base polling interval in minutes. The integration tightens this automatically on delivery day. |
-| **When a query is ambiguous** | Whether to ask for disambiguation or reject.                                                   |
-| **Available diet filters**    | Filter tokens discovered from Mathem at runtime, rendered as checkboxes.                       |
-| **Default profile**           | The profile used when a service call does not name one.                                        |
-| **Profiles (JSON)**           | The dietary profiles, see below.                                                               |
+| Option                          | Description                                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Delivery address**            | The address deliveries go to. Detected automatically from your account; see [Delivery address](#delivery-address).  |
+| **Leave at door**               | Whether slots are booked as unattended (doorstep) delivery; see [Unattended delivery](#unattended-delivery).        |
+| **Poll interval**               | How often the cart and orders are refreshed normally (minutes).                                                     |
+| **Delivery-window poll interval** | A faster refresh used only during an order's delivery window or live tracking; see [Polling](#polling).           |
+| **When a query is ambiguous**   | Whether to ask you which product you meant, or reject the request.                                                  |
+| **Available diet filters**      | Diet filters Mathem currently supports, discovered at runtime and shown as checkboxes.                             |
+| **Default profile**             | The profile used when a service call does not name one.                                                            |
+| **Profiles (JSON)**             | The dietary profiles, see [Dietary profiles](#dietary-profiles).                                                   |
+
+#### Delivery address
+
+The integration reads the delivery addresses from your Mathem account and shows
+them as a dropdown, so there is nothing to look up by hand. If your account has a
+single address it is selected for you; if you have several, pick the one you want.
+Delivery slot booking uses this address, and if it is ever left unset the
+integration falls back to your account's address automatically.
+
+#### Unattended delivery
+
+**Leave at door** controls how the integration books a delivery slot. When on, it
+asks Mathem for an unattended (doorstep) delivery, the order is left at your door
+without you needing to be present. Turn it off if the delivery must be handed over
+in person. It has no effect until the integration books a slot for you.
+
+#### Polling
+
+The integration refreshes the cart and orders on the **Poll interval** (30
+minutes by default). It automatically switches to the shorter
+**Delivery-window poll interval** (2 minutes by default) only while an active
+order is inside its delivery window or is being live tracked, so tracking stays
+current without polling hard the rest of the time.
 
 ## Dietary profiles
 
