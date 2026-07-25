@@ -43,6 +43,7 @@ class MathemNextDeliverySensor(MathemEntity, SensorEntity):
         device_class=SensorDeviceClass.TIMESTAMP,
     )
     _attr_name = "Next delivery"
+    _attr_icon = "mdi:truck-delivery"
 
     def __init__(self, coordinator, entry_id: str) -> None:
         super().__init__(coordinator, entry_id)
@@ -78,6 +79,7 @@ class MathemCartTotalSensor(MathemEntity, SensorEntity):
 
     _attr_name = "Cart total"
     _attr_native_unit_of_measurement = "SEK"
+    _attr_icon = "mdi:cart"
 
     def __init__(self, coordinator, entry_id: str) -> None:
         super().__init__(coordinator, entry_id)
@@ -110,6 +112,7 @@ class MathemSelectedSlotSensor(MathemEntity, SensorEntity):
     """The most recently selected slot; display-only, may be stale."""
 
     _attr_name = "Selected slot"
+    _attr_icon = "mdi:calendar-clock"
 
     def __init__(self, coordinator, entry_id: str) -> None:
         super().__init__(coordinator, entry_id)
