@@ -33,10 +33,14 @@ description: >-
   search, pass a free-text `query` (a product name such as "havremjölk"); for
   set_quantity and remove, pass a numeric `product_id` obtained from a prior
   search. The response reports the resolved product, or a needs_disambiguation
-  status with candidate products to ask the user about. If an added item comes
-  back with `available: false`, it was added to the cart but is out of stock;
-  tell the user, include the `availability_note`, and mention that alternatives
-  exist when `has_alternatives` is true. This never places an order or checks out.
+  status with a `prompt` and `candidates` (each with a product_id and name). On
+  needs_disambiguation, ask the user the prompt, list the candidates, and once
+  they choose, call this tool again with action add and that candidate's
+  `product_id` (add accepts either a query or a product_id). If an added item
+  comes back with `available: false`, it was added to the cart but is out of
+  stock; tell the user, include the `availability_note`, and mention that
+  alternatives exist when `has_alternatives` is true. This never places an order
+  or checks out.
 
 # Serialise calls so two overlapping requests cannot race the cart.
 mode: queued
@@ -67,7 +71,9 @@ fields:
       text:
   product_id:
     name: Product ID
-    description: Exact Mathem product id. Used by set_quantity and remove.
+    description: >
+      Exact Mathem product id. Used by set_quantity and remove, and by add to
+      add a specific product such as a chosen disambiguation candidate.
     required: false
     selector:
       number:
@@ -100,12 +106,22 @@ sequence:
             response_variable: result
       - conditions: "{{ action == 'add' }}"
         sequence:
-          - action: mathem.add_item
-            data:
-              query: "{{ query }}"
-              quantity: "{{ qty }}"
-              profile: "{{ profile }}"
-            response_variable: result
+          # Add a specific product by id (e.g. a chosen disambiguation
+          # candidate) when product_id is given, otherwise resolve the query.
+          - if: "{{ product_id | default(0) | int > 0 }}"
+            then:
+              - action: mathem.add_item
+                data:
+                  product_id: "{{ product_id | int }}"
+                  quantity: "{{ qty }}"
+                response_variable: result
+            else:
+              - action: mathem.add_item
+                data:
+                  query: "{{ query }}"
+                  quantity: "{{ qty }}"
+                  profile: "{{ profile }}"
+                response_variable: result
       - conditions: "{{ action == 'set_quantity' }}"
         sequence:
           - action: mathem.set_quantity
