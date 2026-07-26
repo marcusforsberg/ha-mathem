@@ -52,7 +52,10 @@ blueprint:
       input:
         add_sentences:
           name: Add item
-          description: Add a product to the cart. Contains {item}; an optional leading number sets the quantity.
+          description: >-
+            Add a product to the cart. Contains {item}; an optional leading
+            number sets the quantity. Say no number and a pantry entry's
+            default quantity applies, otherwise one.
           selector:
             text:
               multiline: false
@@ -178,15 +181,17 @@ actions:
       # --- Add an item (optionally N of it) ----------------------------
       - conditions: "{{ trigger.id == 'add' }}"
         sequence:
+          # Only send quantity when one was actually spoken, so a pantry
+          # entry's default_quantity can apply when it was not.
           - action: mathem.add_item
-            data:
-              query: "{{ trigger.slots.item }}"
-              quantity: "{{ trigger.slots.quantity | default(1) | int(1) }}"
-              profile: "{{ profile }}"
+            data: >-
+              {{ {'query': trigger.slots.item, 'profile': profile}
+                 | combine({'quantity': trigger.slots.quantity | int}
+                           if trigger.slots.quantity is defined else {}) }}
             response_variable: result
           - set_conversation_response: >-
               {% if result.status == 'added' %}
-              La till {% if trigger.slots.quantity is defined %}{{ trigger.slots.quantity }} {% endif %}{{ result.resolved_name or trigger.slots.item }}.
+              La till {{ result.quantity }} {{ result.resolved_name or trigger.slots.item }}{% if result.quantity_from_pantry %} (ditt vanliga antal){% endif %}.
               {% if result.available == false %}Obs: {{ result.availability_note or 'varan är slut' }}{% if result.has_alternatives %}, det finns alternativ{% endif %}.{% endif %}
               {% elif result.status == 'needs_disambiguation' %}
               {{ result.prompt or 'Vilken vara menar du?' }}

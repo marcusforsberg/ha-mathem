@@ -170,7 +170,8 @@ products. It is the most reliable mechanism in the system, because it replaces
 inference with an assertion, and it is the right fix whenever a user repeatedly
 hits disambiguation on a word they use often.
 
-Four entry kinds, mutually exclusive in practice:
+Four entry kinds, mutually exclusive in practice, and one modifier any
+of them can carry:
 
 ```yaml
 # A straight pin.
@@ -181,6 +182,12 @@ lingonsylt:
 sojamjölk:
   product_id: 5454
   also: [sojadryck, alpromjölk]
+
+# default_quantity is how many to add when the request names no number.
+tvättmedel:
+  product_id: 8817
+  also: [kulörtvätt]
+  default_quantity: 2
 
 # Never auto-resolves; asks which one.
 mjölk:

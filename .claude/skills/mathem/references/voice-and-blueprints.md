@@ -54,10 +54,12 @@ Inputs, in two sections:
 How each branch behaves internally is worth knowing, because it explains the
 failure modes users report:
 
-- **Add** calls `add_item` with the captured `{item}` and `{quantity}`, then
-  reports the resolved name. It relays `needs_disambiguation` by speaking the
-  `prompt`, but the built-in agent cannot carry a follow-up answer back, so an
-  ambiguous word is a dead end locally. Pin it in the pantry instead.
+- **Add** calls `add_item` with the captured `{item}`, passing `{quantity}` only
+  when a number was spoken so a pantry entry's `default_quantity` can apply, and
+  speaks back the quantity the service reports. It relays `needs_disambiguation`
+  by speaking the `prompt`, but the built-in agent cannot carry a follow-up
+  answer back, so an ambiguous word is a dead end locally. Pin it in the pantry
+  instead.
 - **Change quantity**, **check** and **remove** all read the cart first and match
   `{item}` as a **case-insensitive substring of the product's full name**. This
   is the biggest rough edge: the spoken word has to literally appear in Mathem's
@@ -122,7 +124,9 @@ editing the sequence does. If the agent is calling the tool wrongly, fix the
 description first.
 
 Parameters: `action` (one of `search`, `add`, `set_quantity`, `remove`, `cart`),
-`query`, `product_id`, `quantity`. The `add` branch chooses between
+`query`, `product_id`, `quantity`. `quantity` doubles as the standing default
+when `action` is `set_alias`, and is omitted from `add` when the caller left it
+out. The `add` branch chooses between
 `product_id` and `query` based on whether `product_id` is greater than zero,
 which is how a chosen disambiguation candidate gets added. The whole
 `response_variable` is returned to the agent via `stop`, so the model sees the

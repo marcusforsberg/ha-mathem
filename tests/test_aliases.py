@@ -79,3 +79,26 @@ def test_as_dict_round_trips_through_json():
 
 def test_unknown_keyword_returns_none():
     assert AliasMap({"kaffe": {"product_id": 1}}).get("te") is None
+
+
+def test_default_quantity_is_parsed_and_round_trips():
+    m = AliasMap({"tvättmedel": {"product_id": 8817, "also": ["kulörtvätt"], "default_quantity": 2}})
+    entry = m.get("kulörtvätt")            # via the synonym
+    assert entry.product_id == 8817
+    assert entry.default_quantity == 2
+    dumped = m.as_dict()
+    assert dumped["tvättmedel"]["default_quantity"] == 2
+    assert AliasMap(dumped).get("tvättmedel").default_quantity == 2
+
+
+def test_default_quantity_absent_stays_none_and_is_not_serialised():
+    m = AliasMap({"tofu": {"product_id": 2751}})
+    assert m.get("tofu").default_quantity is None
+    assert "default_quantity" not in m.as_dict()["tofu"]
+
+
+def test_canonical_resolves_synonyms_to_the_stored_keyword():
+    m = AliasMap({"tvättmedel": {"product_id": 8817, "also": ["kulörtvätt"]}})
+    assert m.canonical("Kulörtvätt") == "tvättmedel"
+    assert m.canonical("tvättmedel") == "tvättmedel"
+    assert m.canonical("diskmedel") is None

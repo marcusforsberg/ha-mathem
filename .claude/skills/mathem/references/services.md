@@ -84,13 +84,14 @@ The main entry point. Give a `query` to resolve through the safety tiers, or a
 | --- | --- | --- |
 | `query` | text | Free text. Mutually exclusive with `product_id`. |
 | `product_id` | number | Treated as a deliberate assertion, skips resolution. |
-| `quantity` | 1-99, default 1 | Additive delta, not an absolute target. Must be >= 1. |
+| `quantity` | 1-99, optional | Additive delta, not an absolute target. Omit it unless a number was asked for: the pantry entry's `default_quantity` applies when it is absent, and 1 when there is none. |
 | `profile` | text | Defaults to the configured default. |
 
 Success:
 
 ```json
-{"status": "added", "product_id": 2751, "quantity": 8, "tier": "alias-pin",
+{"status": "added", "product_id": 2751, "quantity": 8,
+ "quantity_from_pantry": false, "tier": "alias-pin",
  "resolved_name": "Eldorado Tofu Naturell", "warnings": [],
  "available": true, "availability_note": null, "has_alternatives": false,
  "cart": { ... full cart, see get_cart ... }}
@@ -278,7 +279,7 @@ The pantry is the alias map. Entry kinds and their semantics are in
 
 | Service | Fields | Notes |
 | --- | --- | --- |
-| `set_alias` | `keyword`\*, `product_id`\* | Fetches the product to verify the id, so a wrong id fails loudly instead of poisoning the map. Only creates pins, not ambiguous or search entries. |
+| `set_alias` | `keyword`\*, `product_id`\*, `default_quantity` (1-99) | Fetches the product to verify the id, so a wrong id fails loudly instead of poisoning the map. Only creates pins, not ambiguous or search entries. Keeps the keyword's existing synonyms, and its existing `default_quantity` when you omit one. |
 | `remove_alias` | `keyword`\* | Removes the canonical entry and its synonyms. |
 | `export_pantry` | none | Returns `{"aliases": {keyword: entry}}`. Use it to back up before bulk edits. |
 | `import_pantry` | `aliases`\* (object), `replace` (default false) | Merges by default. This is the only way to create ambiguous and search entries. |
@@ -292,6 +293,7 @@ To create an ambiguous or query-rewrite entry, build the object and import it:
     aliases:
       mjölk: {ambiguous: [5454, 2190, 65962], prompt: "Vilken mjölk?"}
       bröd: {search: "glutenfritt bröd", require_filters: ["allergens_free:gluten_free"]}
+      tvättmedel: {product_id: 8817, also: ["kulörtvätt"], default_quantity: 2}
 ```
 
 Export first, since a botched `replace: true` loses the whole map.

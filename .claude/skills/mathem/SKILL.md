@@ -46,7 +46,7 @@ resolved and defaults to the configured default profile.
 | --- | --- |
 | `mathem.search_products` | `query`\*, `profile`, `limit` (1-60, default 10) |
 | `mathem.get_product` | `product_id`\* |
-| `mathem.add_item` | `query` **xor** `product_id`, `quantity` (1-99, default 1), `profile` |
+| `mathem.add_item` | `query` **xor** `product_id`, `quantity` (1-99; omit to let a pantry `default_quantity` apply), `profile` |
 | `mathem.set_quantity` | `product_id`\*, `quantity`\* (0-99, absolute) |
 | `mathem.remove_item` | `product_id`\* |
 | `mathem.get_cart` | none |
@@ -55,7 +55,7 @@ resolved and defaults to the configured default profile.
 | `mathem.set_delivery_slot` | `slot_id` **xor** `predicate`, `days` (1-14, default 5) |
 | `mathem.get_orders` | `limit` (1-50, default 10) |
 | `mathem.get_order` | `order_number` (omit for the most recent) |
-| `mathem.set_alias` | `keyword`\*, `product_id`\* |
+| `mathem.set_alias` | `keyword`\*, `product_id`\*, `default_quantity` (1-99) |
 | `mathem.remove_alias` | `keyword`\* |
 | `mathem.export_pantry` | none |
 | `mathem.import_pantry` | `aliases`\* (object), `replace` (default false) |
@@ -71,6 +71,7 @@ name, or when you are writing YAML that consumes a response.
 
 ```json
 {"status": "added", "product_id": 2751, "quantity": 8,
+ "quantity_from_pantry": false,
  "tier": "alias-pin", "resolved_name": "Eldorado Tofu Naturell",
  "warnings": [], "available": true, "availability_note": null,
  "has_alternatives": false, "cart": { ... }}
@@ -131,7 +132,12 @@ written. Read the current options with
 
 **Add something.** One call with a free-text `query`. Let the resolver do its
 job rather than searching first and passing an id; the query path is the one
-with the safety tiers attached. Pass `quantity` in the same call.
+with the safety tiers attached. Pass `quantity` in the same call when the user
+named a number, and leave it out when they did not: a pantry entry can set a
+`default_quantity` for things never bought singly, and it applies only when no
+quantity was requested. Read the response's `quantity` for what was actually
+added, and mention the usual amount was used when `quantity_from_pantry` is
+true.
 
 **Handle `needs_disambiguation`.** Relay the `prompt` and list the candidates by
 name. When the user picks one, call `add_item` again with that candidate's
@@ -186,10 +192,11 @@ disambiguation on a word they use often, offer to pin it.
 Take the `product_id` from a cart line or a search result in this conversation,
 never from memory of an earlier one. `set_alias` proves the id exists, not that
 it is the product the user meant, so a stale id pins the wrong thing silently.
-Read the returned `resolved_name` back to confirm. `set_alias` writes plain pins
-only: synonyms for one keyword (`also`) and ask-me-which entries (`ambiguous`)
-have to go through `import_pantry`, so build the whole entry and import it
-rather than making several separate pins. Remember that a pin bypasses the
+Read the returned `resolved_name` back to confirm. `set_alias` writes plain
+pins, optionally with a `default_quantity` for something never bought singly
+("tvättmedel is always two"); synonyms for one keyword (`also`) and ask-me-which
+entries (`ambiguous`) have to go through `import_pantry`, so build the whole
+entry and import it rather than making several separate pins. Remember that a pin bypasses the
 dietary vetoes on every later add, so pin only what the user actually asked
 for.
 

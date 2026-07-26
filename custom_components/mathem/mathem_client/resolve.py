@@ -50,6 +50,9 @@ class AliasEntry:
     - ``product_id`` set -> a pin (optionally with ``also`` synonyms).
     - ``ambiguous`` set -> never auto-resolves; prompts the user.
     - ``search`` set -> rewrites the query, optionally with ``require_filters``.
+
+    Any kind may carry ``default_quantity`` for things never bought singly. It
+    applies only when the caller did not ask for a specific number.
     """
 
     keyword: str
@@ -59,6 +62,7 @@ class AliasEntry:
     prompt: str | None = None
     search: str | None = None
     require_filters: tuple[str, ...] = ()
+    default_quantity: int | None = None
 
     @classmethod
     def from_dict(cls, keyword: str, data: dict[str, Any]) -> AliasEntry:
@@ -70,6 +74,11 @@ class AliasEntry:
             prompt=data.get("prompt"),
             search=data.get("search"),
             require_filters=tuple(data.get("require_filters") or ()),
+            default_quantity=(
+                int(data["default_quantity"])
+                if data.get("default_quantity") is not None
+                else None
+            ),
         )
 
     @property
@@ -107,8 +116,12 @@ class AliasMap:
         self._index = {k: v for k, v in self._index.items() if v != keyword}
         return True
 
+    def canonical(self, query: str) -> str | None:
+        """The stored keyword a query maps to, whether it is a synonym or not."""
+        return self._index.get(normalize(query))
+
     def get(self, query: str) -> AliasEntry | None:
-        canonical = self._index.get(normalize(query))
+        canonical = self.canonical(query)
         return self._entries.get(canonical) if canonical else None
 
     def as_dict(self) -> dict[str, dict[str, Any]]:
@@ -127,6 +140,8 @@ class AliasMap:
                 data["search"] = entry.search
             if entry.require_filters:
                 data["require_filters"] = list(entry.require_filters)
+            if entry.default_quantity is not None:
+                data["default_quantity"] = entry.default_quantity
             out[keyword] = data
         return out
 
@@ -174,6 +189,9 @@ class ResolveResult:
     candidates: list[Candidate] = field(default_factory=list)
     prompt: str | None = None
     warnings: list[str] = field(default_factory=list)
+    # From the matched alias, when it sets one. The caller decides whether to
+    # use it; an explicitly requested quantity always wins.
+    default_quantity: int | None = None
 
     @property
     def resolved(self) -> bool:
@@ -188,6 +206,7 @@ class ResolveResult:
             "candidates": [c.as_dict() for c in self.candidates],
             "prompt": self.prompt,
             "warnings": self.warnings,
+            "default_quantity": self.default_quantity,
         }
 
 
@@ -236,17 +255,21 @@ class Resolver:
         prof = self._profile(profile)
         search_query = query
         require_filters = list(prof.require_filters)
+        alias_default_quantity: int | None = None
 
         # -- Tier 1: alias -------------------------------------------------
         alias = self._aliases.get(query)
         if alias is not None:
             if alias.kind == "pinned":
-                return await self._pinned_result(alias.product_id)  # type: ignore[arg-type]
+                return await self._pinned_result(
+                    alias.product_id, alias.default_quantity  # type: ignore[arg-type]
+                )
             if alias.kind == "ambiguous":
                 return await self._ambiguous_result(alias)
             if alias.kind == "search":
                 search_query = alias.search or query
                 require_filters.extend(alias.require_filters)
+            alias_default_quantity = alias.default_quantity
 
         # -- Gather candidates --------------------------------------------
         products = await self._products.search_paged(
@@ -284,6 +307,7 @@ class Resolver:
                     tier=verdict.tier,
                     candidate=candidate,
                     warnings=verdict.warnings,
+                    default_quantity=alias_default_quantity,
                 )
             rejected.append(
                 Candidate(
@@ -309,7 +333,9 @@ class Resolver:
 
     # -- alias helpers -----------------------------------------------------
 
-    async def _pinned_result(self, product_id: int) -> ResolveResult:
+    async def _pinned_result(
+        self, product_id: int, default_quantity: int | None = None
+    ) -> ResolveResult:
         """A pin asserts the id; tiers 2-3 are bypassed. Fetch name if possible."""
         name = str(product_id)
         promo: dict[str, Any] = {}
@@ -328,6 +354,7 @@ class Resolver:
             product_id=product_id,
             tier="alias-pin",
             candidate=candidate,
+            default_quantity=default_quantity,
         )
 
     async def _ambiguous_result(self, alias: AliasEntry) -> ResolveResult:

@@ -61,7 +61,9 @@ _ADD_ITEM_SCHEMA = vol.Schema(
     {
         vol.Optional("query"): cv.string,
         vol.Optional("product_id"): vol.Coerce(int),
-        vol.Optional("quantity", default=1): vol.All(int, vol.Range(min=1)),
+        # No default: an omitted quantity must stay distinguishable from an
+        # explicit 1, so a pantry entry's default_quantity can apply.
+        vol.Optional("quantity"): vol.All(int, vol.Range(min=1)),
         _PROFILE: cv.string,
     }
 )
@@ -85,7 +87,11 @@ _GET_ORDERS_SCHEMA = vol.Schema(
 )
 _GET_ORDER_SCHEMA = vol.Schema({vol.Optional("order_number"): cv.string})
 _SET_ALIAS_SCHEMA = vol.Schema(
-    {vol.Required("keyword"): cv.string, vol.Required("product_id"): vol.Coerce(int)}
+    {
+        vol.Required("keyword"): cv.string,
+        vol.Required("product_id"): vol.Coerce(int),
+        vol.Optional("default_quantity"): vol.All(int, vol.Range(min=1, max=99)),
+    }
 )
 _REMOVE_ALIAS_SCHEMA = vol.Schema({vol.Required("keyword"): cv.string})
 _IMPORT_PANTRY_SCHEMA = vol.Schema(
@@ -301,19 +307,22 @@ def async_register_services(hass: HomeAssistant) -> None:
         rt = _runtime(hass)
         query = call.data.get("query")
         product_id = call.data.get("product_id")
-        quantity = call.data["quantity"]
+        requested = call.data.get("quantity")
         if (query is None) == (product_id is None):
             raise ServiceValidationError("Provide exactly one of query or product_id")
 
         try:
             if product_id is not None:
-                # A raw id is a deliberate assertion (like a pin); no inference.
+                # A raw id is a deliberate assertion (like a pin); no inference,
+                # and no alias to take a default quantity from.
+                quantity = requested or 1
                 cart = await rt.client.cart.add_item(product_id, quantity)
                 rt.coordinator.apply_cart(cart)
                 return {
                     "status": "added",
                     "product_id": product_id,
                     "quantity": quantity,
+                    "quantity_from_pantry": False,
                     **_added_line_info(cart, product_id),
                     "cart": _cart_dict(cart),
                 }
@@ -323,12 +332,18 @@ def async_register_services(hass: HomeAssistant) -> None:
             if result.status is not ResolveStatus.RESOLVED:
                 return {"status": result.status.value, **result.as_dict()}
 
+            # An explicit quantity always wins; otherwise a pantry entry may say
+            # how many of this the household actually buys.
+            from_pantry = requested is None and result.default_quantity is not None
+            quantity = requested or result.default_quantity or 1
+
             cart = await rt.client.cart.add_item(result.product_id, quantity)  # type: ignore[arg-type]
             rt.coordinator.apply_cart(cart)
             return {
                 "status": "added",
                 "product_id": result.product_id,
                 "quantity": quantity,
+                "quantity_from_pantry": from_pantry,
                 "tier": result.tier,
                 "resolved_name": result.candidate.name if result.candidate else None,
                 "warnings": result.warnings,
@@ -522,12 +537,27 @@ def async_register_services(hass: HomeAssistant) -> None:
             raise ServiceValidationError(
                 f"Product id {product_id} did not resolve: {err}"
             ) from err
-        await rt.pantry.async_set_alias(call.data["keyword"], {"product_id": product_id})
+        # Writing to the canonical key means re-pinning through a synonym
+        # updates the existing entry instead of forking a second one.
+        keyword = rt.pantry.aliases.canonical(call.data["keyword"]) or call.data["keyword"]
+        existing = rt.pantry.aliases.get(keyword)
+        entry: dict[str, Any] = {"product_id": product_id}
+        # ``add`` replaces the entry wholesale, so carry over what the caller
+        # did not mention rather than silently dropping it.
+        if existing is not None and existing.also:
+            entry["also"] = list(existing.also)
+        default_quantity = call.data.get("default_quantity")
+        if default_quantity is None and existing is not None:
+            default_quantity = existing.default_quantity
+        if default_quantity is not None:
+            entry["default_quantity"] = default_quantity
+        await rt.pantry.async_set_alias(keyword, entry)
         return {
             "status": "ok",
-            "keyword": call.data["keyword"],
+            "keyword": keyword,
             "product_id": product_id,
             "resolved_name": detail.product.full_name,
+            "default_quantity": default_quantity,
         }
 
     async def remove_alias(call: ServiceCall) -> ServiceResponse:

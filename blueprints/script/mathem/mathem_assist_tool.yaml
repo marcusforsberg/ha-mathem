@@ -36,8 +36,14 @@ description: >-
   `product_id` obtained from a prior search or from the cart.
 
   To add several of an item, pass `quantity` with add (e.g. add "tofu" quantity
-  8). To change an item already in the cart to an exact amount (e.g. from 1 to
-  6), use set_quantity with the item's product_id and the new quantity; get the
+  8). Leave `quantity` out when the user did not say a number: a pantry entry can
+  carry a default for things never bought singly, and it only applies when no
+  quantity was asked for. The response's `quantity` is what was actually added,
+  so report that rather than assuming one, and when `quantity_from_pantry` is
+  true say it used the usual amount.
+
+  To change an item already in the cart to an exact amount (e.g. from 1 to 6),
+  use set_quantity with the item's product_id and the new quantity; get the
   product_id from action cart or a search. To answer whether the cart contains an
   item, or how many, use action cart and read the returned `lines` (each line has
   a name and quantity); do not guess.
@@ -51,8 +57,11 @@ description: >-
   keyword bypasses the dietary vetoes on every later add, so pin only what the
   user explicitly asked for, and prefer to confirm first when the request was
   spoken. Use remove_alias with `keyword` to undo one, and pantry to list what is
-  currently pinned. Synonyms for one keyword and ask-me-which entries cannot be
-  created here; those need the mathem.import_pantry service directly.
+  currently pinned. When the user says something is never bought singly
+  ("tvättmedel is always two"), pass `quantity` to set_alias as well and it
+  becomes that keyword's standing default. Synonyms for one keyword and
+  ask-me-which entries cannot be created here; those need the
+  mathem.import_pantry service directly.
 
   The response reports the resolved product, or a needs_disambiguation status
   with a `prompt` and `candidates` (each with a product_id and name). On
@@ -128,9 +137,11 @@ fields:
       text:
   quantity:
     name: Quantity
-    description: Quantity for add and set_quantity (defaults to 1).
+    description: >
+      Quantity for add and set_quantity, and the standing default quantity for
+      set_alias. Omit it for add unless the user asked for a number, so a
+      pantry default can apply.
     required: false
-    default: 1
     selector:
       number:
         mode: box
@@ -163,10 +174,11 @@ sequence:
                 response_variable: result
             else:
               - action: mathem.add_item
-                data:
-                  query: "{{ query }}"
-                  quantity: "{{ qty }}"
-                  profile: "{{ profile }}"
+                data: >-
+                  {{ {'query': query, 'profile': profile}
+                     | combine({'quantity': quantity | int}
+                               if quantity is defined and quantity is not none
+                               else {}) }}
                 response_variable: result
       - conditions: "{{ action == 'set_quantity' }}"
         sequence:
@@ -192,9 +204,11 @@ sequence:
       - conditions: "{{ action == 'set_alias' }}"
         sequence:
           - action: mathem.set_alias
-            data:
-              keyword: "{{ keyword }}"
-              product_id: "{{ product_id | int }}"
+            data: >-
+              {{ {'keyword': keyword, 'product_id': product_id | int}
+                 | combine({'default_quantity': quantity | int}
+                           if quantity is defined and quantity is not none
+                           else {}) }}
             response_variable: result
       - conditions: "{{ action == 'remove_alias' }}"
         sequence:

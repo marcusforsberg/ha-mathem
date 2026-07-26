@@ -60,7 +60,9 @@ add_item:
           mode: box
     quantity:
       name: Quantity
-      default: 1
+      description: >-
+        How many to add. Leave empty to use the pantry entry's default_quantity
+        if it has one, otherwise 1.
       selector:
         number:
           min: 1
@@ -193,7 +195,9 @@ get_order:
 
 set_alias:
   name: Set alias
-  description: Pin a keyword to a product id. Verifies the id resolves to a real product.
+  description: >-
+    Pin a keyword to a product id. Verifies the id resolves to a real product.
+    Keeps the keyword's existing synonyms and default quantity.
   fields:
     keyword:
       name: Keyword
@@ -206,6 +210,16 @@ set_alias:
       required: true
       selector:
         number:
+          mode: box
+    default_quantity:
+      name: Default quantity
+      description: >-
+        How many to add when this keyword is used without a quantity, for
+        things never bought singly. Leave empty for one.
+      selector:
+        number:
+          min: 1
+          max: 99
           mode: box
 
 remove_alias:

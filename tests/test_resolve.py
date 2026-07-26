@@ -215,3 +215,29 @@ async def test_no_results_reports_disambiguation_not_crash():
     result = await resolver.resolve("obefintlig produkt", profile="marcus")
     assert result.status is ResolveStatus.NEEDS_DISAMBIGUATION
     assert result.candidates == []
+
+
+async def test_pinned_alias_carries_its_default_quantity():
+    resolver = _resolver([SOY], aliases={"tvättmedel": {"product_id": 5454, "default_quantity": 2}})
+    result = await resolver.resolve("tvättmedel", profile="marcus")
+    assert result.resolved
+    assert result.default_quantity == 2
+
+
+async def test_pin_without_a_default_quantity_reports_none():
+    resolver = _resolver([SOY], aliases={"sojamjölk": {"product_id": 5454}})
+    result = await resolver.resolve("sojamjölk", profile="marcus")
+    assert result.resolved
+    assert result.default_quantity is None
+
+
+async def test_search_alias_can_carry_a_default_quantity():
+    gf = make_detail(300, "Semper Glutenfritt Bröd", ingredients="majsstärkelse",
+                     allergens="", badges=["allergens_free:gluten_free"])
+    resolver = _resolver(
+        [gf],
+        aliases={"bröd": {"search": "glutenfritt bröd", "default_quantity": 3}},
+        profiles={}, default=None,
+    )
+    result = await resolver.resolve("bröd", profile=None)
+    assert result.resolved and result.default_quantity == 3

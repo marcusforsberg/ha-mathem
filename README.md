@@ -196,7 +196,8 @@ to specific products, so the assistant resolves them the way you mean. It is the
 most reliable way to handle the items you buy regularly. An entry can pin a word
 to an exact product, list synonyms for it, mark a word as ambiguous so the
 assistant asks which one you meant, or rewrite a word into a more specific search
-with required filters.
+with required filters. Any entry can also carry a default quantity, for the
+things you never buy just one of.
 
 The pantry is stored by Home Assistant and managed through services rather than a
 settings form, which keeps it easy to script, back up, and edit in bulk.
@@ -208,10 +209,16 @@ Entry kinds:
 lingonsylt:
   product_id: 9435
 
-# A pin with the synonyms Swedish speech-to-text actually produces.
+# A pin with synonyms
 sojamjölk:
   product_id: 5454
   also: [sojadryck, alpromjölk]
+
+# Any entry can set how many to add when you do not say a number.
+tvättmedel:
+  product_id: 8817
+  also: [kulörtvätt]
+  default_quantity: 2
 
 # Never auto-resolves; asks which one.
 mjölk:
@@ -278,7 +285,7 @@ the configured default.
 | `mathem.set_delivery_slot`   | Select a slot by `slot_id` or by a `predicate`.                                                                                      |
 | `mathem.get_orders`          | List recent orders with totals, delivery date and status.                                                                            |
 | `mathem.get_order`           | One order in full: every line with quantity and amount, the fee and credit rows, and the total. Omit the number for the most recent. |
-| `mathem.set_alias`           | Pin a keyword to a product id (verifies the id).                                                                                     |
+| `mathem.set_alias`           | Pin a keyword to a product id (verifies the id), optionally with a default quantity.                                                 |
 | `mathem.remove_alias`        | Remove a pantry alias.                                                                                                               |
 | `mathem.export_pantry`       | Return the whole alias map.                                                                                                          |
 | `mathem.import_pantry`       | Import an alias map inline (keyword to entry); merges, or replaces with `replace: true`.                                             |
@@ -376,16 +383,16 @@ Swedish phrases on the built-in conversation agent. Every phrase is an editable,
 translatable blueprint input, so you can adapt or add sentences without touching
 YAML. Defaults:
 
-| Command         | Default phrases                                                                                                                                                                                  |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Command         | Default phrases                                                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Add item        | `lägg [till ][{1..99:quantity} ]{item} i varukorgen[ på mathem]`, plus `handla`/`köp`/`lägg till [N ]{item} på mathem`. An optional leading number sets how many, e.g. "lägg till 8 tofu i varukorgen". |
-| Change quantity | `ändra {item} till {0..99:quantity}`, `sätt {item} till N`, `ändra antalet {item} till N` (each with optional ` på mathem`)                                                                      |
-| Check item      | `har jag {item} i varukorgen`, `hur många {item} har jag i varukorgen`, `hur många {item} finns i varukorgen` (each with optional ` på mathem`)                                                  |
-| Remove item     | `ta bort {item} från varukorgen`, `ta bort {item} från mathem`                                                                                                                                   |
-| Read cart       | `vad ligger i varukorgen`, `vad har (jag\|vi) i varukorgen`, `vad finns i varukorgen`, `hur mycket kostar varukorgen`, `visa varukorgen`, `summera varukorgen` (each with optional ` på mathem`) |
-| Last order      | `(hämta\|summera) min senaste (order\|beställning\|mathembeställning)` (with optional ` från mathem`)                                                                                            |
-| Next delivery   | `när kommer min leverans`, `när är nästa leverans`, `när kommer mathem`                                                                                                                          |
-| Book slot       | `boka billigaste leverans`, `välj billigaste leveranstid`                                                                                                                                        |
+| Change quantity | `ändra {item} till {0..99:quantity}`, `sätt {item} till N`, `ändra antalet {item} till N` (each with optional ` på mathem`)                                                                             |
+| Check item      | `har jag {item} i varukorgen`, `hur många {item} har jag i varukorgen`, `hur många {item} finns i varukorgen` (each with optional ` på mathem`)                                                         |
+| Remove item     | `ta bort {item} från varukorgen`, `ta bort {item} från mathem`                                                                                                                                          |
+| Read cart       | `vad ligger i varukorgen`, `vad har (jag\|vi) i varukorgen`, `vad finns i varukorgen`, `hur mycket kostar varukorgen`, `visa varukorgen`, `summera varukorgen` (each with optional ` på mathem`)        |
+| Last order      | `(hämta\|summera) min senaste (order\|beställning\|mathembeställning)` (with optional ` från mathem`)                                                                                                   |
+| Next delivery   | `när kommer min leverans`, `när är nästa leverans`, `när kommer mathem`                                                                                                                                 |
+| Book slot       | `boka billigaste leverans`, `välj billigaste leveranstid`                                                                                                                                               |
 
 Create an automation from the blueprint and set your dietary profile (optional)
 and the next-delivery sensor. It runs on the built-in **Home Assistant** agent;
