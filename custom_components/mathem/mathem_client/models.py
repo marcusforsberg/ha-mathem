@@ -571,9 +571,11 @@ class Order:
     # CONFIRMED / PROCESSING / ON_THE_WAY / DELIVERED. More reliable than the
     # localised status title for telling a past order from an upcoming one.
     tracking_step: str | None = None
-    # Free text under the tracking steps; carries the narrowed delivery
-    # estimate once the order is being packed.
+    # Free text around the tracking steps. The narrowed delivery estimate
+    # appears in the subtitle while packing and moves to the title once the
+    # order ships, so both are kept and both are searched.
     tracking_subtitle: str | None = None
+    tracking_title: str | None = None
     raw: dict[str, Any] = field(repr=False, default_factory=dict)
 
     @classmethod
@@ -597,6 +599,7 @@ class Order:
             live_tracked_order=_pick(tdata, "live_tracked_order", "liveTrackedOrder"),
             tracking_step=_pick(tracking, "step_name", "stepName"),
             tracking_subtitle=_pick(tdata, "subtitle"),
+            tracking_title=_pick(tdata, "title"),
             raw=data,
         )
 
@@ -612,11 +615,19 @@ class Order:
     def estimated_window(self, now: datetime) -> tuple[datetime | None, datetime | None]:
         """Mathem's narrowed estimate, if it has published one yet.
 
-        Anchored to the booked window's date, since the text has clock times
-        only. ``(None, None)`` until the order is packed.
+        The estimate sits in the tracking subtitle while the order is being
+        packed and in the title once it ships, so both are searched. A range
+        equal to the booked window is the booked window restated, not an
+        estimate, so it is skipped; that test needs no Swedish phrase matching.
+        Anchored to the booked date, since the text carries clock times only.
         """
-        booked_start, _ = self.window(now)
-        return parse_estimated_window(self.tracking_subtitle, booked_start)
+        booked_start, booked_end = self.window(now)
+        for text in (self.tracking_subtitle, self.tracking_title):
+            start, end = parse_estimated_window(text, booked_start)
+            if start is None or (start, end) == (booked_start, booked_end):
+                continue
+            return (start, end)
+        return (None, None)
 
     def effective_window(self, now: datetime) -> tuple[datetime | None, datetime | None]:
         """The estimate when there is one, otherwise the booked window."""

@@ -68,7 +68,9 @@ class MathemCalendar(MathemEntity, CalendarEntity):
         if not data or not data.orders:
             return []
         now = dt_util.now()
-        events = [_event_for(o, now) for o in data.orders.active]
+        # Undelivered rather than "active": the API moves an order out of the
+        # active group once it ships, and it is still a delivery until it lands.
+        events = [_event_for(o, now) for o in data.orders.upcoming]
         return [e for e in events if e is not None]
 
     @property

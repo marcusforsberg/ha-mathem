@@ -30,13 +30,27 @@ class OrdersResult:
         return self.orders[0] if self.orders else None
 
     @property
-    def next_delivery(self) -> Order | None:
-        """The imminent active order.
+    def upcoming(self) -> list[Order]:
+        """Orders that have not been delivered yet, however they are grouped.
 
-        The API returns active orders first, so the first one is the next
-        delivery. Its window text is turned into datetimes by ``Order.window``.
+        Mathem regroups an order once it ships, so membership of the
+        ``active_orders`` group is not a dependable test. A tracking step that
+        is present and not DELIVERED is.
         """
-        return self.active[0] if self.active else None
+        return [o for o in self.orders if o.tracking_step and not o.is_delivered]
+
+    @property
+    def next_delivery(self) -> Order | None:
+        """The imminent order, whether or not the API still calls it active.
+
+        Prefers the active group, then falls back to the first undelivered
+        order, so the sensor keeps working while an order is out for delivery.
+        Its window text is turned into datetimes by ``Order.window``.
+        """
+        if self.active:
+            return self.active[0]
+        upcoming = self.upcoming
+        return upcoming[0] if upcoming else None
 
 
 class OrdersClient:
@@ -52,6 +66,15 @@ class OrdersClient:
             orders.extend(group_orders)
             if _pick(group, "type") in ACTIVE_GROUP_TYPES:
                 active.extend(group_orders)
+        if not active and orders:
+            # The active group is how the API used to mark an in-flight order.
+            # Log what it actually sent when that group is missing, so a
+            # regrouping is diagnosable instead of silently blanking the sensor.
+            _LOGGER.debug(
+                "no active order group; groups=%s steps=%s",
+                [_pick(g, "type") for g in _pick(data, "results", default=[]) or []],
+                [(o.order_number, o.tracking_step) for o in orders[:3]],
+            )
         return OrdersResult(
             orders=orders,
             active=active,

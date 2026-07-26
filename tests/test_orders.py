@@ -350,3 +350,67 @@ def test_booked_window_is_never_overwritten_by_the_estimate():
     order = _order_with_subtitle("Vi tror att vi är hos dig mellan 08:25–09:25.")
     booked_start, booked_end = order.window(NOW)
     assert (booked_start.hour, booked_end.hour) == (6, 11)
+
+
+async def test_next_delivery_survives_the_order_leaving_the_active_group():
+    # Once an order ships, Mathem moves it out of active_orders. The sensor
+    # must still find it, or it goes unknown mid-delivery.
+    shipped = {
+        "results": [
+            {
+                "type": "shipped_orders",
+                "orders": [{
+                    "orderNumber": "s1",
+                    "status": {"title": "Orderbekräftelse"},
+                    "delivery": {
+                        "deliveryTime": "idag, 06:00 - 11:00",
+                        "tracking": {"stepName": "SHIPPED",
+                                     "data": {"subtitle": "Du är nr. 14."}},
+                    },
+                }],
+            },
+            {
+                "type": "month",
+                "orders": [{
+                    "orderNumber": "old",
+                    "delivery": {"deliveryTime": "sön 5. juli, 09:27",
+                                 "tracking": {"stepName": "DELIVERED", "data": {}}},
+                }],
+            },
+        ],
+    }
+    res = await OrdersClient(_OrdersSession(shipped)).get_orders()
+    assert res.active == []                      # group name no longer matches
+    assert [o.order_number for o in res.upcoming] == ["s1"]
+    assert res.next_delivery.order_number == "s1"
+    start, _ = res.next_delivery.window(datetime(2026, 7, 26, 8, 10, tzinfo=STORE_TZ))
+    assert start.hour == 6
+
+
+async def test_upcoming_excludes_delivered_and_untracked_orders():
+    payload = {"results": [{"type": "month", "orders": [
+        {"orderNumber": "d", "delivery": {"tracking": {"stepName": "DELIVERED", "data": {}}}},
+        {"orderNumber": "n", "delivery": {}},  # no tracking at all
+    ]}]}
+    res = await OrdersClient(_OrdersSession(payload)).get_orders()
+    assert res.upcoming == []
+    assert res.next_delivery is None
+
+
+def test_estimate_is_read_from_the_title_once_shipped():
+    # When the order ships the estimate moves from the subtitle to the title,
+    # and the subtitle becomes a queue position.
+    order = _order_with_subtitle("Vi levererade precis till kund nr. 11. Du är nr. 14.")
+    order.tracking_title = "Vi tror att vi är hos dig mellan 08:29–08:51."
+    start, end = order.estimated_window(NOW)
+    assert ((start.hour, start.minute), (end.hour, end.minute)) == ((8, 29), (8, 51))
+
+
+def test_title_restating_the_booked_window_is_not_an_estimate():
+    # Before packing the title is just the booked window; treating it as an
+    # estimate would make is_estimated true with no real estimate behind it.
+    order = _order_with_subtitle("Du kan fortfarande lägga till varor i din beställning.")
+    order.tracking_title = "Din leverans imorgon 06:00 - 11:00"
+    assert order.estimated_window(NOW) == (None, None)
+    start, end = order.effective_window(NOW)
+    assert (start.hour, end.hour) == (6, 11)
