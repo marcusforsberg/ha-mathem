@@ -1,4 +1,4 @@
-# Voice control, blueprints and existing automations
+# Voice control and blueprints
 
 Read this when editing voice sentences, changing what the LLM agent can do,
 debugging a spoken command that did not match, or building a new automation on
