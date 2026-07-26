@@ -213,10 +213,11 @@ before float to the top of search results and are flagged. When a user says
 
 | Entity | Notes |
 | --- | --- |
-| `sensor.mathem_next_delivery` | Timestamp of the next window start, switching to Mathem's narrowed estimate once the order is packed. Attributes: `booked_start`/`booked_end`, `estimated_start`/`estimated_end`, `is_estimated`, `estimate_text`, `order_number`, `window` (Swedish text), `window_end` (follows the state), `status`, `tracking_step`, `edit_deadline`, `address`, `doorstep_delivery`. When answering when a delivery arrives, use the estimate if `is_estimated` is true and say it is an estimate, and mention the booked window too. |
+| `sensor.mathem_next_delivery` | Timestamp of the next window start, switching to Mathem's narrowed estimate once the order is packed. Attributes: `booked_start`/`booked_end`, `estimated_start`/`estimated_end`, `is_estimated`, `estimate_text`, `window_short` (compact "HH:MM - HH:MM"), `order_number`, `window` (Swedish text), `window_end` (follows the state), `status`, `tracking_step`, `edit_deadline`, `address`, `doorstep_delivery`. When answering when a delivery arrives, use the estimate if `is_estimated` is true and say it is an estimate, and mention the booked window too. |
 | `sensor.mathem_cart_total` | Goods total. Attributes: `total_gross_amount`, `summary_lines`, `line_count`, `unit_count`, `currency`. |
 | `sensor.mathem_selected_slot` | The slot Mathem currently holds, wherever it was booked (integration, app or website); read from the slot list on every poll. State is the local window as `YYYY-MM-DD HH:MM-HH:MM`. Attributes: `slot_id`, `window`, `window_start`, `window_end`, `price`, `cutoff`, and `hold_expires_at` for the 60 minute cart hold, which Mathem only returns for slots booked through the integration. Display only. |
 | `calendar.mathem_delivery` | Upcoming deliveries. Events always span the full booked window, never the narrowed estimate; the estimate is in the description. |
+| `binary_sensor.mathem_delivery_today` | On when the next delivery's booked day is today. Prefer this over comparing dates yourself. |
 | `button.mathem_resync` | Press (`button.press`) to refresh the cart, orders and held slot at once. Use it when the cart may have been changed in the Mathem app and you want the entities current before reading them; service calls already return fresh data, so it is not needed after a mutation. |
 
 ## Voice control and blueprints

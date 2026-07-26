@@ -75,6 +75,9 @@ class MathemNextDeliverySensor(MathemEntity, SensorEntity):
         return {
             "order_number": order.order_number,
             "window": order.delivery_time_text,
+            # Compact "HH:MM - HH:MM" for a dashboard badge, where the day is
+            # already implied. Follows the estimate when there is one.
+            "window_short": order.window_short(now),
             # Follows the state, so start and end always describe one window.
             "window_end": effective_end.isoformat() if effective_end else None,
             "booked_start": booked_start.isoformat() if booked_start else None,

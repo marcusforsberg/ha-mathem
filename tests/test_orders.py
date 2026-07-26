@@ -414,3 +414,37 @@ def test_title_restating_the_booked_window_is_not_an_estimate():
     assert order.estimated_window(NOW) == (None, None)
     start, end = order.effective_window(NOW)
     assert (start.hour, end.hour) == (6, 11)
+
+
+# -- badge helpers ---------------------------------------------------------
+
+
+def test_window_short_uses_the_estimate_when_there_is_one():
+    order = _order_with_subtitle("Vi tror att vi är hos dig mellan 08:29–08:51.")
+    assert order.window_short(NOW) == "08:29 - 08:51"
+
+
+def test_window_short_falls_back_to_the_booked_window():
+    order = _order_with_subtitle("Du kan fortfarande lägga till varor.")
+    assert order.window_short(NOW) == "06:00 - 11:00"
+
+
+def test_window_short_is_none_without_a_window():
+    order = _order_with_subtitle("x", delivery_time="obegripligt")
+    assert order.window_short(NOW) is None
+
+
+def test_is_delivery_today_tracks_the_booked_day():
+    # NOW is 2026-07-25 12:00 local.
+    today = _order_with_subtitle("x", delivery_time="idag, 06:00 - 11:00")
+    tomorrow = _order_with_subtitle("x", delivery_time="imorgon, 06:00 - 11:00")
+    assert today.is_delivery_today(NOW) is True
+    assert tomorrow.is_delivery_today(NOW) is False
+
+
+def test_is_delivery_today_ignores_an_estimate_that_moves():
+    # The estimate must not flip the day flag; the booked day decides.
+    order = _order_with_subtitle(
+        "Vi tror att vi är hos dig mellan 08:29–08:51.", delivery_time="imorgon, 06:00 - 11:00"
+    )
+    assert order.is_delivery_today(NOW) is False

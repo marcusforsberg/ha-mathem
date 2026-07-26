@@ -636,6 +636,30 @@ class Order:
             return (start, end)
         return self.window(now)
 
+    def window_short(self, now: datetime) -> str | None:
+        """The effective window as ``HH:MM - HH:MM`` in local time.
+
+        Intended for a compact display such as a dashboard badge, where the day
+        is already implied. ``None`` when no window can be resolved.
+        """
+        start, end = self.effective_window(now)
+        if start is None or end is None:
+            return None
+        local_start = start.astimezone(STORE_TZ)
+        local_end = end.astimezone(STORE_TZ)
+        return f"{local_start:%H:%M} - {local_end:%H:%M}"
+
+    def is_delivery_today(self, now: datetime) -> bool:
+        """Whether the booked delivery day is the current local day.
+
+        Keyed on the booked window rather than the estimate, so it does not
+        change as the estimate moves around within the day.
+        """
+        start, _ = self.window(now)
+        if start is None:
+            return False
+        return start.astimezone(STORE_TZ).date() == now.astimezone(STORE_TZ).date()
+
 
 # Once an order is being packed, Mathem narrows the booked window to an estimate
 # and states it only in free text, e.g. "Vi tror att vi är hos dig mellan
