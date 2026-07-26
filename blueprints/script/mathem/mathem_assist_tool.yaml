@@ -29,10 +29,11 @@ description: >-
   Manage the user's Mathem online grocery cart. Use this whenever the user wants
   to search Mathem for a product, add an item to the Mathem cart, change an
   item's quantity, remove an item, or ask what (or how much of something) is in
-  the cart. Set `action` to one of search, add, set_quantity, remove or cart. For
-  add and search, pass a free-text `query` (a product name such as "havremjölk");
-  for set_quantity and remove, pass a numeric `product_id` obtained from a prior
-  search or from the cart.
+  the cart, or wants a word remembered as a particular product. Set `action` to
+  one of search, add, set_quantity, remove, cart, orders, order, set_alias,
+  remove_alias or pantry. For add and search, pass a free-text `query` (a product
+  name such as "havremjölk"); for set_quantity and remove, pass a numeric
+  `product_id` obtained from a prior search or from the cart.
 
   To add several of an item, pass `quantity` with add (e.g. add "tofu" quantity
   8). To change an item already in the cart to an exact amount (e.g. from 1 to
@@ -40,6 +41,18 @@ description: >-
   product_id from action cart or a search. To answer whether the cart contains an
   item, or how many, use action cart and read the returned `lines` (each line has
   a name and quantity); do not guess.
+
+  When the user wants a word to mean a specific product from now on ("remember
+  that tvättmedel is this one"), use set_alias with `keyword` and `product_id`.
+  Take the product_id from a cart line or a search result in this conversation,
+  never from memory of an earlier session: set_alias verifies the id exists but
+  cannot tell that it is the wrong product. The response returns `resolved_name`,
+  so read it back to the user to confirm the right thing was pinned. A pinned
+  keyword bypasses the dietary vetoes on every later add, so pin only what the
+  user explicitly asked for, and prefer to confirm first when the request was
+  spoken. Use remove_alias with `keyword` to undo one, and pantry to list what is
+  currently pinned. Synonyms for one keyword and ask-me-which entries cannot be
+  created here; those need the mathem.import_pantry service directly.
 
   The response reports the resolved product, or a needs_disambiguation status
   with a `prompt` and `candidates` (each with a product_id and name). On
@@ -63,8 +76,9 @@ fields:
       What to do: 'search' to look up products, 'add' to add an item by name,
       'set_quantity' to set an absolute quantity by product id, 'remove' to
       remove a product by id, 'cart' to read the current cart, 'orders' to list
-      recent orders with their totals, or 'order' to read one placed order in
-      full including every line.
+      recent orders with their totals, 'order' to read one placed order in full
+      including every line, 'set_alias' to remember a word as a product,
+      'remove_alias' to forget one, or 'pantry' to list the remembered words.
     required: true
     selector:
       select:
@@ -76,6 +90,9 @@ fields:
           - cart
           - orders
           - order
+          - set_alias
+          - remove_alias
+          - pantry
   query:
     name: Query
     description: Item to search for or add, free text such as "sojamjölk". Used by search and add.
@@ -98,6 +115,14 @@ fields:
     description: >
       Used by the order action to read a specific placed order. Omit it to get
       the most recent order.
+    required: false
+    selector:
+      text:
+  keyword:
+    name: Keyword
+    description: >
+      The everyday word to remember or forget, used by set_alias and
+      remove_alias, for example "tvättmedel".
     required: false
     selector:
       text:
@@ -164,6 +189,23 @@ sequence:
         sequence:
           - action: mathem.get_orders
             response_variable: result
+      - conditions: "{{ action == 'set_alias' }}"
+        sequence:
+          - action: mathem.set_alias
+            data:
+              keyword: "{{ keyword }}"
+              product_id: "{{ product_id | int }}"
+            response_variable: result
+      - conditions: "{{ action == 'remove_alias' }}"
+        sequence:
+          - action: mathem.remove_alias
+            data:
+              keyword: "{{ keyword }}"
+            response_variable: result
+      - conditions: "{{ action == 'pantry' }}"
+        sequence:
+          - action: mathem.export_pantry
+            response_variable: result
       - conditions: "{{ action == 'order' }}"
         sequence:
           - action: mathem.get_order
@@ -173,7 +215,7 @@ sequence:
     default:
       - variables:
           result:
-            error: "Unknown action. Use search, add, set_quantity, remove, cart, orders or order."
+            error: "Unknown action. Use search, add, set_quantity, remove, cart, orders, order, set_alias, remove_alias or pantry."
   # Return the Mathem service response to the conversation agent so it can
   # phrase the reply (including needs_disambiguation candidates).
   - stop: "done"

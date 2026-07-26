@@ -183,6 +183,16 @@ results for regularly bought items. `set_alias` verifies the id resolves before
 storing it, so a wrong id fails loudly. If a user keeps hitting
 disambiguation on a word they use often, offer to pin it.
 
+Take the `product_id` from a cart line or a search result in this conversation,
+never from memory of an earlier one. `set_alias` proves the id exists, not that
+it is the product the user meant, so a stale id pins the wrong thing silently.
+Read the returned `resolved_name` back to confirm. `set_alias` writes plain pins
+only: synonyms for one keyword (`also`) and ask-me-which entries (`ambiguous`)
+have to go through `import_pantry`, so build the whole entry and import it
+rather than making several separate pins. Remember that a pin bypasses the
+dietary vetoes on every later add, so pin only what the user actually asked
+for.
+
 ## Things that will otherwise cost you a wrong answer
 
 **Check for an editable active order before telling the user to check out.**
