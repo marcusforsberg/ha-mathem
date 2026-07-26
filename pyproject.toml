@@ -9,6 +9,18 @@ requires-python = ">=3.12"
 [project.optional-dependencies]
 dev = ["aiohttp", "pytest", "pytest-asyncio"]
 
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# Nothing here is meant to be importable as an installed package: the
+# integration lives under custom_components and the root conftest puts the
+# vendored client on sys.path itself. Declaring no packages stops flat-layout
+# discovery tripping over blueprints/ and custom_components/, and leaves
+# `pip install -e ".[dev]"` doing its real job of pulling the dev extras.
+packages = []
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

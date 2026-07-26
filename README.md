@@ -89,9 +89,11 @@ your behalf.
 
 ### Manual
 
-1. Copy `custom_components/mathem` into your Home Assistant `config/custom_components` directory.
+1. Copy `custom_components/mathem` into your Home Assistant
+   `config/custom_components` directory.
 2. Restart Home Assistant.
-3. Add the integration from **Settings -> Devices & Services**.
+3. Go to **Settings → Devices & Services → Add Integration** and search for
+   **Mathem**.
 
 ## Configuration
 
@@ -125,8 +127,8 @@ Open the integration and choose **Configure** to set:
 | **Poll interval**                 | How often the cart and orders are refreshed normally (minutes).                                                    |
 | **Delivery-window poll interval** | A faster refresh used only during an order's delivery window or live tracking; see [Polling](#polling).            |
 | **When a query is ambiguous**     | Whether to ask you which product you meant, or reject the request.                                                 |
-| **Available diet filters**        | Diet filters Mathem currently supports, discovered at runtime and shown as checkboxes.                             |
 | **Default profile**               | The profile used when a service call does not name one.                                                            |
+| **Available diet filters**        | Diet filters Mathem currently supports, discovered at runtime and shown as checkboxes.                             |
 | **Profiles (JSON)**               | The dietary profiles, see [Dietary profiles](#dietary-profiles).                                                   |
 
 #### Delivery address
@@ -287,6 +289,31 @@ Every service returns a response (available to scripts via `response_variable`).
 `search_products`, `add_item` and `audit_cart` take an optional `profile` that
 defaults to the configured default.
 
+To try one, open **Developer Tools → Actions**, pick a `mathem.` action, fill
+the fields and tick **Return response**. In a script or automation the response
+is captured with `response_variable`:
+
+```yaml
+sequence:
+  - action: mathem.add_item
+    data:
+      query: havregryn
+    response_variable: result
+  - action: notify.persistent_notification
+    data:
+      message: >-
+        {% if result.status == 'added' %}
+          Added {{ result.quantity }} × {{ result.resolved_name }}.
+        {% else %}
+          {{ result.prompt or 'Could not add that.' }}
+        {% endif %}
+```
+
+Handling the non-`added` branch is the point: rather than guessing between
+several products, or between a product and one a profile forbids, `add_item`
+returns `needs_disambiguation` with a `prompt` and `candidates`. See
+[The safety model](#the-safety-model).
+
 | Service                      | Purpose                                                                                                                              |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `mathem.search_products`     | Search the catalogue. Returns products with the promotion block verbatim.                                                            |
@@ -310,7 +337,7 @@ Slot ids are ephemeral (adjacent days reuse unrelated ids), so prefer a
 predicate. Times in a predicate are local (Europe/Stockholm):
 
 ```yaml
-service: mathem.set_delivery_slot
+action: mathem.set_delivery_slot
 data:
   predicate:
     weekdays: [sat]
@@ -323,10 +350,10 @@ data:
 
 | Entity                                | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sensor.mathem_next_delivery`         | `timestamp` device class; state is the start of the delivery window in force, switching to Mathem's narrowed estimate once the order is packed. Each attribute prefix names one concept: `window_*` is the window in force and matches the state (`window_text`, `window_end`, `is_estimated`), `booked_*` is what was reserved (`booked_text`, `booked_start`, `booked_end`), `estimated_start`/`estimated_end` is the prediction, and `tracking_step`/`tracking_text` is Mathem's commentary. Plus order number, status, edit deadline and address. See [Delivery estimates](#delivery-estimates). |
+| `sensor.mathem_next_delivery`         | `timestamp` device class; state is the start of the delivery window in force, switching to Mathem's narrowed estimate once the order is packed. Each attribute prefix names one concept: `window_*` is the window in force and matches the state (`window_text`, `window_end`, `is_estimated`), `booked_*` is what was reserved (`booked_text`, `booked_start`, `booked_end`), `estimated_start`/`estimated_end` is the prediction, and `tracking_step`/`tracking_text` is Mathem's commentary. Plus order number, status, edit deadline, address and `doorstep_delivery`. See [Delivery estimates](#delivery-estimates). |
 | `sensor.mathem_last_delivery`         | `timestamp` device class; when the most recent order actually arrived (a delivered order's window collapses to that moment). Renders relatively, so a badge reads "för 3 minuter sedan" and keeps counting without polling, useful as a reminder to bring the groceries in. Attributes: `order_number`, `delivered_text`, `address`, `status`, and `image_url` when Mathem left a doorstep photo; see [Delivery photos](#delivery-photos).                                                                                                                                                           |
 | `sensor.mathem_cart_total`            | Cart goods total, with the fee breakdown, line count and unit count in attributes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `sensor.mathem_selected_slot`         | The delivery slot Mathem currently holds, wherever it was booked (this integration, the app or the website). State is the local window as `YYYY-MM-DD HH:MM-HH:MM`; attributes carry `slot_id`, `window_start`, `window_end`, `price` and `cutoff`. `hold_expires_at` (the 60 minute cart hold) appears only for slots booked through the integration, since Mathem exposes it only in that response. Display only.                                                                                                                                                                                  |
+| `sensor.mathem_selected_slot`         | The delivery slot Mathem currently holds, wherever it was booked (this integration, the app or the website). State is the local window as `YYYY-MM-DD HH:MM-HH:MM`; attributes carry `slot_id`, `window`, `window_start`, `window_end`, `price` and `cutoff`. `hold_expires_at` (the 60 minute cart hold) appears only for slots booked through the integration, since Mathem exposes it only in that response. Display only.                                                                                                                                                                                  |
 | `calendar.mathem_delivery`            | Upcoming deliveries, served entirely from coordinator data. Events always span the full booked window; any estimate appears in the event description.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `binary_sensor.mathem_delivery_today` | On when the next delivery's **booked** day is today. Keyed to the booked day so it does not flicker as the estimate moves. Useful for delivery-day automations and for dashboard visibility conditions, which can only test an entity's state.                                                                                                                                                                                                                                                                                                                                                       |
 | `button.mathem_resync`                | Refreshes the cart, orders and held slot immediately, for when something changed in the Mathem app and you do not want to wait for the next poll. Categorised as diagnostic, so it appears in the device's Diagnostics card.                                                                                                                                                                                                                                                                                                                                                                         |
@@ -454,7 +481,7 @@ tested on a workstation without a running Home Assistant instance.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install aiohttp pytest pytest-asyncio
+pip install -e ".[dev]"
 pytest
 ```
 
