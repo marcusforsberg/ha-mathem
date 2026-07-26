@@ -66,15 +66,6 @@ class OrdersClient:
             orders.extend(group_orders)
             if _pick(group, "type") in ACTIVE_GROUP_TYPES:
                 active.extend(group_orders)
-        if not active and orders:
-            # The active group is how the API used to mark an in-flight order.
-            # Log what it actually sent when that group is missing, so a
-            # regrouping is diagnosable instead of silently blanking the sensor.
-            _LOGGER.debug(
-                "no active order group; groups=%s steps=%s",
-                [_pick(g, "type") for g in _pick(data, "results", default=[]) or []],
-                [(o.order_number, o.tracking_step) for o in orders[:3]],
-            )
         return OrdersResult(
             orders=orders,
             active=active,
