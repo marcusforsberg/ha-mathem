@@ -71,7 +71,7 @@ your behalf.
 
 ## Requirements
 
-- Home Assistant 2026.7.4 or newer.
+- Home Assistant 2026.7.0 or newer.
 - A Mathem account.
 
 ## Installation
