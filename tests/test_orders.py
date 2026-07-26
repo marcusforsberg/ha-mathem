@@ -504,3 +504,24 @@ async def test_last_delivered_is_none_without_any_delivered_order():
     ]}]}
     res = await OrdersClient(_OrdersSession(payload)).get_orders()
     assert res.last_delivered is None
+
+
+# -- doorstep delivery photo ------------------------------------------------
+
+
+def test_delivery_image_url_is_read_when_present():
+    from mathem_client.models import Order
+    order = Order.from_api({
+        "orderNumber": "p1",
+        "delivery": {"deliveryTime": "sön 5. juli, 09:27",
+                     "deliveryImageUrl": "https://example.invalid/photo.jpg?Expires=1&Signature=x",
+                     "tracking": {"stepName": "DELIVERED", "data": {}}},
+    })
+    assert order.delivery_image_url.startswith("https://example.invalid/photo.jpg")
+
+
+def test_delivery_image_url_is_none_when_absent():
+    from mathem_client.models import Order
+    # Most orders have no photo at all, so this is the common case.
+    order = Order.from_api({"orderNumber": "p2", "delivery": {"deliveryTime": "idag, 08:37"}})
+    assert order.delivery_image_url is None

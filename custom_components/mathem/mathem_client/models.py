@@ -576,6 +576,9 @@ class Order:
     delivery_address: str | None
     delivery_time_text: str | None
     cutoff_text: str | None
+    # Doorstep photo. A signed URL that expires 14 days after delivery, and
+    # absent on most orders, so treat it as a bonus rather than a guarantee.
+    delivery_image_url: str | None
     is_doorstep_delivery: bool | None
     live_tracked_order: Any
     # CONFIRMED / PROCESSING / ON_THE_WAY / DELIVERED. More reliable than the
@@ -605,6 +608,7 @@ class Order:
             delivery_address=_pick(delivery, "delivery_address", "deliveryAddress"),
             delivery_time_text=_pick(delivery, "delivery_time", "deliveryTime"),
             cutoff_text=_pick(delivery, "cutoff_text", "cutoffText"),
+            delivery_image_url=_pick(delivery, "delivery_image_url", "deliveryImageUrl"),
             is_doorstep_delivery=_pick(tdata, "is_doorstep_delivery", "isDoorstepDelivery"),
             live_tracked_order=_pick(tdata, "live_tracked_order", "liveTrackedOrder"),
             tracking_step=_pick(tracking, "step_name", "stepName"),

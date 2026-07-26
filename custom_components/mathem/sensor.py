@@ -137,12 +137,20 @@ class MathemLastDeliverySensor(MathemEntity, SensorEntity):
         order = self._order()
         if order is None:
             return {}
-        return {
+        attrs: dict[str, Any] = {
             "order_number": order.order_number,
             "delivered_text": order.delivery_time_text,
             "address": order.delivery_address,
             "status": order.status_title,
+            "image_url": order.delivery_image_url,
         }
+        # Also as entity_picture, which badges and tiles render on their own. It
+        # is only set when a photo exists, so the entity keeps its icon
+        # otherwise. Mathem signs the URL and it expires 14 days after delivery,
+        # so treat a dead link as expected rather than an error.
+        if order.delivery_image_url:
+            attrs["entity_picture"] = order.delivery_image_url
+        return attrs
 
 
 class MathemCartTotalSensor(MathemEntity, SensorEntity):

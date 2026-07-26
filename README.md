@@ -107,16 +107,16 @@ logs in again on each Home Assistant restart.
 
 Open the integration and choose **Configure** to set:
 
-| Option                          | Description                                                                                                           |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **Delivery address**            | The address deliveries go to. Detected automatically from your account; see [Delivery address](#delivery-address).  |
-| **Leave at door**               | Whether slots are booked as unattended (doorstep) delivery; see [Unattended delivery](#unattended-delivery).        |
-| **Poll interval**               | How often the cart and orders are refreshed normally (minutes).                                                     |
-| **Delivery-window poll interval** | A faster refresh used only during an order's delivery window or live tracking; see [Polling](#polling).           |
-| **When a query is ambiguous**   | Whether to ask you which product you meant, or reject the request.                                                  |
-| **Available diet filters**      | Diet filters Mathem currently supports, discovered at runtime and shown as checkboxes.                             |
-| **Default profile**             | The profile used when a service call does not name one.                                                            |
-| **Profiles (JSON)**             | The dietary profiles, see [Dietary profiles](#dietary-profiles).                                                   |
+| Option                            | Description                                                                                                        |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Delivery address**              | The address deliveries go to. Detected automatically from your account; see [Delivery address](#delivery-address). |
+| **Leave at door**                 | Whether slots are booked as unattended (doorstep) delivery; see [Unattended delivery](#unattended-delivery).       |
+| **Poll interval**                 | How often the cart and orders are refreshed normally (minutes).                                                    |
+| **Delivery-window poll interval** | A faster refresh used only during an order's delivery window or live tracking; see [Polling](#polling).            |
+| **When a query is ambiguous**     | Whether to ask you which product you meant, or reject the request.                                                 |
+| **Available diet filters**        | Diet filters Mathem currently supports, discovered at runtime and shown as checkboxes.                             |
+| **Default profile**               | The profile used when a service call does not name one.                                                            |
+| **Profiles (JSON)**               | The dietary profiles, see [Dietary profiles](#dietary-profiles).                                                   |
 
 #### Delivery address
 
@@ -299,15 +299,15 @@ data:
 
 ## Entities
 
-| Entity                        | Description                                                                                                                                               |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sensor.mathem_next_delivery` | `timestamp` device class; state is the start of the delivery window in force, switching to Mathem's narrowed estimate once the order is packed. Each attribute prefix names one concept: `window_*` is the window in force and matches the state (`window_text`, `window_end`, `is_estimated`), `booked_*` is what was reserved (`booked_text`, `booked_start`, `booked_end`), `estimated_start`/`estimated_end` is the prediction, and `tracking_step`/`tracking_text` is Mathem's commentary. Plus order number, status, edit deadline and address. See [Delivery estimates](#delivery-estimates). |
-| `sensor.mathem_last_delivery` | `timestamp` device class; when the most recent order actually arrived (a delivered order's window collapses to that moment). Renders relatively, so a badge reads "för 3 minuter sedan" and keeps counting without polling, useful as a reminder to bring the groceries in. Attributes: `order_number`, `delivered_text`, `address`, `status`. |
-| `sensor.mathem_cart_total`    | Cart goods total, with the fee breakdown, line count and unit count in attributes.                                                                        |
-| `sensor.mathem_selected_slot` | The delivery slot Mathem currently holds, wherever it was booked (this integration, the app or the website). State is the local window as `YYYY-MM-DD HH:MM-HH:MM`; attributes carry `slot_id`, `window_start`, `window_end`, `price` and `cutoff`. `hold_expires_at` (the 60 minute cart hold) appears only for slots booked through the integration, since Mathem exposes it only in that response. Display only. |
-| `calendar.mathem_delivery`    | Upcoming deliveries, served entirely from coordinator data. Events always span the full booked window; any estimate appears in the event description.     |
-| `binary_sensor.mathem_delivery_today` | On when the next delivery's **booked** day is today. Keyed to the booked day so it does not flicker as the estimate moves. Useful for delivery-day automations and for dashboard visibility conditions, which can only test an entity's state. |
-| `button.mathem_resync`        | Refreshes the cart, orders and held slot immediately, for when something changed in the Mathem app and you do not want to wait for the next poll. Categorised as diagnostic, so it appears in the device's Diagnostics card. |
+| Entity                                | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sensor.mathem_next_delivery`         | `timestamp` device class; state is the start of the delivery window in force, switching to Mathem's narrowed estimate once the order is packed. Each attribute prefix names one concept: `window_*` is the window in force and matches the state (`window_text`, `window_end`, `is_estimated`), `booked_*` is what was reserved (`booked_text`, `booked_start`, `booked_end`), `estimated_start`/`estimated_end` is the prediction, and `tracking_step`/`tracking_text` is Mathem's commentary. Plus order number, status, edit deadline and address. See [Delivery estimates](#delivery-estimates). |
+| `sensor.mathem_last_delivery`         | `timestamp` device class; when the most recent order actually arrived (a delivered order's window collapses to that moment). Renders relatively, so a badge reads "för 3 minuter sedan" and keeps counting without polling, useful as a reminder to bring the groceries in. Attributes: `order_number`, `delivered_text`, `address`, `status`, and `image_url` when Mathem left a doorstep photo; see [Delivery photos](#delivery-photos).                                                                                                                                                           |
+| `sensor.mathem_cart_total`            | Cart goods total, with the fee breakdown, line count and unit count in attributes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `sensor.mathem_selected_slot`         | The delivery slot Mathem currently holds, wherever it was booked (this integration, the app or the website). State is the local window as `YYYY-MM-DD HH:MM-HH:MM`; attributes carry `slot_id`, `window_start`, `window_end`, `price` and `cutoff`. `hold_expires_at` (the 60 minute cart hold) appears only for slots booked through the integration, since Mathem exposes it only in that response. Display only.                                                                                                                                                                                  |
+| `calendar.mathem_delivery`            | Upcoming deliveries, served entirely from coordinator data. Events always span the full booked window; any estimate appears in the event description.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `binary_sensor.mathem_delivery_today` | On when the next delivery's **booked** day is today. Keyed to the booked day so it does not flicker as the estimate moves. Useful for delivery-day automations and for dashboard visibility conditions, which can only test an entity's state.                                                                                                                                                                                                                                                                                                                                                       |
+| `button.mathem_resync`                | Refreshes the cart, orders and held slot immediately, for when something changed in the Mathem app and you do not want to wait for the next poll. Categorised as diagnostic, so it appears in the device's Diagnostics card.                                                                                                                                                                                                                                                                                                                                                                         |
 
 ### Delivery estimates
 
@@ -338,6 +338,30 @@ Once the order is delivered it stops being upcoming, so this sensor, the calenda
 and `binary_sensor.mathem_delivery_today` all go empty and
 `sensor.mathem_last_delivery` reports when it arrived.
 
+### Delivery photos
+
+For a doorstep delivery Mathem leaves a photo. When there is one it
+appears on `sensor.mathem_last_delivery` as `image_url`, and also as
+`entity_picture`, which badges and tiles render on their own, so a badge shows
+the photo instead of the icon.
+
+Two things to expect. The photo is **not always there**: most orders have none,
+and it can appear some minutes after the delivery rather than with it. And the
+link is a **signed URL that expires 14 days after delivery**, after which it
+stops loading. Mathem does not re-sign it, so re-polling will not revive an old
+one. It is proof-of-delivery for the day, not an archive.
+
+To show it full size, read the attribute from a markdown card, which is the way
+to render a URL that changes per delivery:
+
+```jinja
+{% set photo = state_attr('sensor.mathem_last_delivery', 'image_url') %}
+{% if photo %}![Leverans]({{ photo }}){% endif %}
+```
+
+The `picture-entity` card is not an option here: it takes a camera, image or
+person entity, and its `image` option is a static URL that cannot be templated.
+
 ## Voice control
 
 Two blueprints ship with the integration under [`blueprints/`](blueprints), one
@@ -357,16 +381,16 @@ Swedish phrases on the built-in conversation agent. Every phrase is an editable,
 translatable blueprint input, so you can adapt or add sentences without touching
 YAML. Defaults:
 
-| Command         | Default phrases                                                                                                     |
-| --------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Add item        | `lägg [till ][{1..99:quantity} ]{item} i varukorgen`, plus `handla`/`köp`/`lägg till [N ]{item} på mathem`. An optional leading number sets how many, e.g. "lägg till 8 tofu i varukorgen". |
-| Change quantity | `ändra {item} till {0..99:quantity}`, `sätt {item} till N`, `ändra antalet {item} till N` (each with optional ` på mathem`)                       |
-| Check item      | `har jag {item} i varukorgen`, `hur många {item} har jag i varukorgen`, `hur många {item} finns i varukorgen` (each with optional ` på mathem`)   |
-| Remove item     | `ta bort {item} från varukorgen`, `ta bort {item} från mathem`                                                      |
+| Command         | Default phrases                                                                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Add item        | `lägg [till ][{1..99:quantity} ]{item} i varukorgen`, plus `handla`/`köp`/`lägg till [N ]{item} på mathem`. An optional leading number sets how many, e.g. "lägg till 8 tofu i varukorgen".      |
+| Change quantity | `ändra {item} till {0..99:quantity}`, `sätt {item} till N`, `ändra antalet {item} till N` (each with optional ` på mathem`)                                                                      |
+| Check item      | `har jag {item} i varukorgen`, `hur många {item} har jag i varukorgen`, `hur många {item} finns i varukorgen` (each with optional ` på mathem`)                                                  |
+| Remove item     | `ta bort {item} från varukorgen`, `ta bort {item} från mathem`                                                                                                                                   |
 | Read cart       | `vad ligger i varukorgen`, `vad har (jag\|vi) i varukorgen`, `vad finns i varukorgen`, `hur mycket kostar varukorgen`, `visa varukorgen`, `summera varukorgen` (each with optional ` på mathem`) |
-| Last order      | `(hämta\|summera) min senaste (order\|beställning\|mathembeställning)` (with optional ` från mathem`)              |
-| Next delivery   | `när kommer min leverans`, `när är nästa leverans`, `när kommer mathem`                                             |
-| Book slot       | `boka billigaste leverans`, `välj billigaste leveranstid`                                                           |
+| Last order      | `(hämta\|summera) min senaste (order\|beställning\|mathembeställning)` (with optional ` från mathem`)                                                                                            |
+| Next delivery   | `när kommer min leverans`, `när är nästa leverans`, `när kommer mathem`                                                                                                                          |
+| Book slot       | `boka billigaste leverans`, `välj billigaste leveranstid`                                                                                                                                        |
 
 Create an automation from the blueprint and set your dietary profile (optional)
 and the next-delivery sensor. It runs on the built-in **Home Assistant** agent;

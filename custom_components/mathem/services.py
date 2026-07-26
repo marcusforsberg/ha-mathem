@@ -182,6 +182,7 @@ def _order_summary_dict(order: Order) -> dict[str, Any]:
         "tracking_step": order.tracking_step,
         "delivered": order.is_delivered,
         "tracking_text": order.tracking_subtitle,
+        "image_url": order.delivery_image_url,
     }
 
 
@@ -201,6 +202,7 @@ def _order_detail_dict(detail: OrderDetail) -> dict[str, Any]:
         "tracking_step": detail.order.tracking_step,
         "delivered": detail.order.is_delivered,
         "tracking_text": detail.order.tracking_subtitle,
+        "image_url": detail.order.delivery_image_url,
         "lines": [
             {
                 "product_id": line.product_id,
