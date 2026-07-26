@@ -6,7 +6,7 @@ description: Operate the Mathem grocery integration in Home Assistant through it
 # Mathem via Home Assistant
 
 `marcusforsberg/ha-mathem` is a custom integration exposing the Swedish grocery
-service Mathem as 16 Home Assistant services plus five entities. Everything you
+service Mathem as 16 Home Assistant services plus seven entities. Everything you
 need to call them is in this file, so there is no reason to list services first.
 
 **The one hard invariant: this integration never places an order.** There is no

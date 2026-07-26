@@ -231,11 +231,15 @@ bröd:
   require_filters: [allergens_free:gluten_free]
 ```
 
-Bootstrap the pantry from your real order history and manage it with
-`mathem.set_alias`, `mathem.remove_alias`, `mathem.export_pantry`,
-`mathem.import_pantry` and `mathem.audit_pantry`. `set_alias` fetches the
-product to confirm the id resolves, so a wrong id fails loudly instead of
-quietly poisoning the map.
+Manage the pantry with `mathem.set_alias`, `mathem.remove_alias`,
+`mathem.export_pantry`, `mathem.import_pantry` and `mathem.audit_pantry`.
+
+`set_alias` creates a pin, optionally with a default quantity, and fetches the
+product first so a wrong id fails loudly instead of quietly poisoning the map.
+It is the only kind it can create: synonym lists, ambiguous entries and search
+rewrites are written as objects and loaded with `mathem.import_pantry`, which
+merges by default. `audit_pantry` re-checks that every pinned and ambiguous id
+still resolves, worth running after a long gap since Mathem retires products.
 
 ## The safety model
 
@@ -406,7 +410,8 @@ skipped on follow-up turns.
 
 **Mathem: full LLM control** (script blueprint) exposes a single tool to a
 language-model conversation agent, letting it search, add, change quantities,
-remove, and read the cart from free-form language with no fixed phrases. Create
+remove, read the cart, look up past orders and manage the pantry, all from
+free-form language with no fixed phrases. Create
 a script from the blueprint, then expose it via **Settings → Voice assistants →
 your assistant → Expose**, and make sure that assistant is an LLM agent with
 Home Assistant control enabled. The script's description and field descriptions

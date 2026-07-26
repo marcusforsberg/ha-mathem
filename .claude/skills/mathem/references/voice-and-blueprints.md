@@ -123,19 +123,20 @@ is the entire interface the model sees, so editing it changes behaviour more tha
 editing the sequence does. If the agent is calling the tool wrongly, fix the
 description first.
 
-Parameters: `action` (one of `search`, `add`, `set_quantity`, `remove`, `cart`),
-`query`, `product_id`, `quantity`. `quantity` doubles as the standing default
-when `action` is `set_alias`, and is omitted from `add` when the caller left it
-out. The `add` branch chooses between
-`product_id` and `query` based on whether `product_id` is greater than zero,
-which is how a chosen disambiguation candidate gets added. The whole
+Parameters: `action` (one of `search`, `add`, `set_quantity`, `remove`, `cart`,
+`orders`, `order`, `set_alias`, `remove_alias`, `pantry`), plus `query`,
+`product_id`, `order_number`, `keyword` and `quantity`. `quantity` doubles as
+the standing default when `action` is `set_alias`, and is omitted from `add`
+when the caller left it out. The `add` branch chooses between `product_id` and
+`query` based on whether `product_id` is greater than zero, which is how a
+chosen disambiguation candidate gets added. The whole
 `response_variable` is returned to the agent via `stop`, so the model sees the
 raw service response including `needs_disambiguation` candidates.
 
-Deliberate omissions: no delivery slot actions and no pantry management. If those
-are wanted, extend the `choose` block and, critically, extend the tool
-description to explain when to use them. Adding a branch without documenting it
-means the model will never call it.
+Deliberate omission: no delivery slot actions. If those are wanted, extend the
+`choose` block and, critically, extend the tool description to explain when to
+use them. Adding a branch without documenting it means the model will never
+call it.
 
 ## Patterns worth reusing
 
