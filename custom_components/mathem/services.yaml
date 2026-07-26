@@ -14,7 +14,9 @@ search_products:
         text:
     profile:
       name: Profile
-      description: Dietary profile to bias results (defaults to the configured default).
+      description: >-
+        Dietary profile whose required filters narrow the results (defaults to
+        the configured default).
       selector:
         text:
     limit:
@@ -130,10 +132,6 @@ list_delivery_slots:
           min: 1
           max: 14
           mode: box
-    profile:
-      name: Profile
-      selector:
-        text:
 
 set_delivery_slot:
   name: Set delivery slot

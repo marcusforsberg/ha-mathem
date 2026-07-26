@@ -72,8 +72,9 @@ _SET_QUANTITY_SCHEMA = vol.Schema(
 )
 _REMOVE_ITEM_SCHEMA = vol.Schema({vol.Required("product_id"): vol.Coerce(int)})
 _AUDIT_CART_SCHEMA = vol.Schema({_PROFILE: cv.string})
+# No profile here: a dietary profile says nothing about delivery times.
 _LIST_SLOTS_SCHEMA = vol.Schema(
-    {vol.Optional("days", default=3): vol.All(int, vol.Range(min=1, max=14)), _PROFILE: cv.string}
+    {vol.Optional("days", default=3): vol.All(int, vol.Range(min=1, max=14))}
 )
 _SET_SLOT_SCHEMA = vol.Schema(
     {
@@ -277,9 +278,15 @@ def async_register_services(hass: HomeAssistant) -> None:
 
     async def search_products(call: ServiceCall) -> ServiceResponse:
         rt = _runtime(hass)
+        # Mirror the resolver: the named profile, else the configured default,
+        # else unrestricted. Only require_filters narrow the API query;
+        # prefer_filters are a ranking hint the resolver applies, not a filter.
+        profile_name = call.data.get("profile") or rt.default_profile
+        prof = rt.profiles.get(profile_name) if profile_name else None
+        filters = list(prof.require_filters) if prof and prof.require_filters else None
         try:
             result = await rt.client.products.search(
-                call.data["query"], filters=None
+                call.data["query"], filters=filters
             )
             products = result.products[: call.data["limit"]]
         except MathemError as err:
@@ -287,6 +294,8 @@ def async_register_services(hass: HomeAssistant) -> None:
         prev = result.previously_bought_ids
         return {
             "query": call.data["query"],
+            "profile": profile_name,
+            "filters": filters or [],
             "total": result.total,
             "returned": len(products),
             "previously_bought": sorted(prev),
