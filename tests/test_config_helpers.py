@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from config_helpers import extract_addresses
 
-# Verbatim shape from GET /slot-picker/slots/ (names/ids are the real fields).
+# Field names and shape are verbatim from GET /slot-picker/slots/; the
+# values are synthetic.
 SLOT_PICKER = {
     "deliverySlots": [],
     "deliveryAddresses": [

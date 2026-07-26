@@ -243,8 +243,9 @@ before float to the top of search results and are flagged. When a user says
 
 Two blueprints ship with the integration: an automation blueprint for local
 Swedish sentences on the built-in agent, and a script blueprint exposing one
-tool to an LLM conversation agent. Both are installed on this instance as
-`automation.mathem_local_voice_control` and `script.mathem_full_llm_control`.
+tool to an LLM conversation agent. Once imported they are typically named
+`automation.mathem_local_voice_control` and `script.mathem_full_llm_control`,
+but neither is guaranteed to exist: check before referring to one.
 
 Read `references/voice-and-blueprints.md` before editing sentences, adding
 phrases, changing the exposed tool, or debugging why a spoken command did not
