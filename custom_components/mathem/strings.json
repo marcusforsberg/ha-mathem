@@ -18,7 +18,8 @@
       }
     },
     "error": {
-      "cannot_connect": "Could not log in. Check the credentials and that the login handshake still works."
+      "invalid_auth": "The email or password was not accepted by Mathem.",
+      "cannot_connect": "Could not reach Mathem, or its login handshake has changed. Check the Home Assistant log."
     },
     "abort": {
       "already_configured": "This Mathem account is already configured.",

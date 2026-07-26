@@ -46,7 +46,7 @@ from .const import (
     FILTER_PROBE_QUERIES,
 )
 from .config_helpers import extract_addresses
-from .mathem_client import MathemClient, MathemError, MathemSession
+from .mathem_client import MathemAuthError, MathemClient, MathemError, MathemSession
 from .mathem_client.profiles import build_profiles
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,6 +75,9 @@ class MathemConfigFlow(ConfigFlow, domain=DOMAIN):
                 await _validate_login(
                     self.hass, user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
                 )
+            except MathemAuthError as err:
+                _LOGGER.warning("Mathem rejected the credentials: %s", err)
+                errors["base"] = "invalid_auth"
             except MathemError as err:
                 _LOGGER.warning("Mathem login failed: %s", err)
                 errors["base"] = "cannot_connect"
@@ -101,7 +104,11 @@ class MathemConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 await _validate_login(self.hass, self._reauth_username, user_input[CONF_PASSWORD])
-            except MathemError:
+            except MathemAuthError as err:
+                _LOGGER.warning("Mathem rejected the new password: %s", err)
+                errors["base"] = "invalid_auth"
+            except MathemError as err:
+                _LOGGER.warning("Mathem re-authentication failed: %s", err)
                 errors["base"] = "cannot_connect"
             else:
                 entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])

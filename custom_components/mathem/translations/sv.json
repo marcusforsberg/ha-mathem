@@ -18,7 +18,8 @@
       }
     },
     "error": {
-      "cannot_connect": "Kunde inte logga in. Kontrollera uppgifterna och att inloggningsflödet fortfarande fungerar."
+      "invalid_auth": "E-postadressen eller lösenordet godtogs inte av Mathem.",
+      "cannot_connect": "Kunde inte nå Mathem, eller så har inloggningsflödet ändrats. Se loggen i Home Assistant."
     },
     "abort": {
       "already_configured": "Det här Mathem-kontot är redan konfigurerat.",
