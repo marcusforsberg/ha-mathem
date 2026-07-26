@@ -51,7 +51,10 @@ in mind.
   full cart with a fee breakdown, unit count and line count.
 - **Delivery slots**: list slots with local times and prices, and select the
   cheapest slot that matches a preference such as "Saturday morning".
-- **Order status** as a timestamp sensor and a calendar entity.
+- **Order status**: when the next delivery arrives, narrowed to Mathem's own
+  estimate once the order is packed, plus when the last one actually landed.
+- **Past orders**: recent orders with their totals, and any single order in full
+  with every line, the fee and credit rows, and the total.
 - **Cart audit** against one or all profiles, as an advisory label-reading
   prompt.
 
@@ -314,17 +317,26 @@ surfaced differently on purpose:
 
 - **The sensor follows the estimate.** Its state becomes the estimated start as
   soon as one exists, because that is the number worth acting on. The booked
-  window is never lost: `booked_start` and `booked_end` stay alongside
-  `estimated_start` and `estimated_end`, and `is_estimated` tells you which one
-  the state is currently reporting. `window_end` always matches the state, so
-  start and end describe the same window.
+  window is never lost: `booked_text`, `booked_start` and `booked_end` stay
+  alongside `estimated_start` and `estimated_end`, and `is_estimated` tells you
+  which one the state is currently reporting. `window_end` and `window_text`
+  always match the state, so start and end describe the same window.
 - **The calendar keeps the booked window.** An event that silently shrank to one
   hour would misrepresent what Mathem actually committed to, and the estimate can
   still move. The estimate is shown in the event description instead.
 
-Mathem publishes the estimate only as a sentence, so the integration parses the
-times out of it. If it cannot find a time range, the sensor simply reports the
-booked window and `is_estimated` stays false.
+Mathem publishes the estimate only as a sentence, never as a field, so the
+integration parses the times out of it. The sentence also moves: it sits in the
+tracking subtitle while the order is being packed and in the title once it ships,
+so both are read, and `tracking_text` carries whatever the current message says,
+which becomes a queue position ("Du är nr. 14") once the van is out. A time range
+equal to the booked window is the booked window restated rather than an estimate,
+so it is ignored. If no estimate can be found, the sensor reports the booked
+window and `is_estimated` stays false.
+
+Once the order is delivered it stops being upcoming, so this sensor, the calendar
+and `binary_sensor.mathem_delivery_today` all go empty and
+`sensor.mathem_last_delivery` reports when it arrived.
 
 ## Voice control
 
@@ -352,6 +364,7 @@ YAML. Defaults:
 | Check item      | `har jag {item} i varukorgen`, `hur många {item} har jag i varukorgen`, `hur många {item} finns i varukorgen` (each with optional ` på mathem`)   |
 | Remove item     | `ta bort {item} från varukorgen`, `ta bort {item} från mathem`                                                      |
 | Read cart       | `vad ligger i varukorgen`, `vad har (jag\|vi) i varukorgen`, `vad finns i varukorgen`, `hur mycket kostar varukorgen`, `visa varukorgen`, `summera varukorgen` (each with optional ` på mathem`) |
+| Last order      | `(hämta\|summera) min senaste (order\|beställning\|mathembeställning)` (with optional ` från mathem`)              |
 | Next delivery   | `när kommer min leverans`, `när är nästa leverans`, `när kommer mathem`                                             |
 | Book slot       | `boka billigaste leverans`, `välj billigaste leveranstid`                                                           |
 
