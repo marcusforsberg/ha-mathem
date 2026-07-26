@@ -378,7 +378,7 @@ YAML. Defaults:
 
 | Command         | Default phrases                                                                                                                                                                                  |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Add item        | `lägg [till ][{1..99:quantity} ]{item} i varukorgen`, plus `handla`/`köp`/`lägg till [N ]{item} på mathem`. An optional leading number sets how many, e.g. "lägg till 8 tofu i varukorgen".      |
+| Add item        | `lägg [till ][{1..99:quantity} ]{item} i varukorgen[ på mathem]`, plus `handla`/`köp`/`lägg till [N ]{item} på mathem`. An optional leading number sets how many, e.g. "lägg till 8 tofu i varukorgen". |
 | Change quantity | `ändra {item} till {0..99:quantity}`, `sätt {item} till N`, `ändra antalet {item} till N` (each with optional ` på mathem`)                                                                      |
 | Check item      | `har jag {item} i varukorgen`, `hur många {item} har jag i varukorgen`, `hur många {item} finns i varukorgen` (each with optional ` på mathem`)                                                  |
 | Remove item     | `ta bort {item} från varukorgen`, `ta bort {item} från mathem`                                                                                                                                   |

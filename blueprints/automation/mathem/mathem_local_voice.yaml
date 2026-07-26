@@ -58,7 +58,7 @@ blueprint:
               multiline: false
               multiple: true
           default:
-            - "lägg [till ][{1..99:quantity} ]{item} i varukorgen"
+            - "lägg [till ][{1..99:quantity} ]{item} i varukorgen[ på mathem]"
             - "lägg till [{1..99:quantity} ]{item} på mathem"
             - "handla [{1..99:quantity} ]{item} på mathem"
             - "köp [{1..99:quantity} ]{item} på mathem"
