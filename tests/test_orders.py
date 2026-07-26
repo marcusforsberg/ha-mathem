@@ -476,3 +476,31 @@ def test_leap_day_does_not_crash():
     now = datetime(2027, 3, 1, 10, 0, tzinfo=STORE_TZ)  # 2027 is not a leap year
     start, _ = parse_delivery_window("mån 29. februari, 09:00", now)
     assert start.date().isoformat() == "2028-02-29"
+
+
+# -- last delivered order ---------------------------------------------------
+
+
+async def test_last_delivered_picks_the_most_recent_delivered_order():
+    payload = {"results": [{"type": "month", "orders": [
+        {"orderNumber": "shipping", "delivery": {"deliveryTime": "idag, 06:00 - 11:00",
+         "tracking": {"stepName": "SHIPPED", "data": {}}}},
+        {"orderNumber": "newest", "delivery": {"deliveryTime": "idag, 08:37",
+         "tracking": {"stepName": "DELIVERED", "data": {}}}},
+        {"orderNumber": "older", "delivery": {"deliveryTime": "sön 5. juli, 09:27",
+         "tracking": {"stepName": "DELIVERED", "data": {}}}},
+    ]}]}
+    res = await OrdersClient(_OrdersSession(payload)).get_orders()
+    last = res.last_delivered
+    assert last.order_number == "newest"          # skips the in-flight one
+    start, end = last.window(datetime(2026, 7, 26, 12, 0, tzinfo=STORE_TZ))
+    assert (start.hour, start.minute) == (8, 37)  # the actual arrival time
+    assert start == end                           # a moment, not a range
+
+
+async def test_last_delivered_is_none_without_any_delivered_order():
+    payload = {"results": [{"type": "month", "orders": [
+        {"orderNumber": "s", "delivery": {"tracking": {"stepName": "SHIPPED", "data": {}}}},
+    ]}]}
+    res = await OrdersClient(_OrdersSession(payload)).get_orders()
+    assert res.last_delivered is None

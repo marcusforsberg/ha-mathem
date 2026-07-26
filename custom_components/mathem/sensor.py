@@ -28,6 +28,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             MathemNextDeliverySensor(coordinator, entry.entry_id),
+            MathemLastDeliverySensor(coordinator, entry.entry_id),
             MathemCartTotalSensor(coordinator, entry.entry_id),
             MathemSelectedSlotSensor(coordinator, entry.entry_id),
         ]
@@ -95,6 +96,52 @@ class MathemNextDeliverySensor(MathemEntity, SensorEntity):
             "edit_deadline": order.cutoff_text,
             "address": order.delivery_address,
             "doorstep_delivery": order.is_doorstep_delivery,
+        }
+
+
+class MathemLastDeliverySensor(MathemEntity, SensorEntity):
+    """When the most recent order actually arrived.
+
+    A timestamp so the frontend renders it relatively ("för 3 minuter sedan")
+    and keeps counting without waiting on a poll, which makes it a good
+    "the groceries are on the doorstep" cue.
+    """
+
+    entity_description = SensorEntityDescription(
+        key="last_delivery",
+        translation_key="last_delivery",
+        device_class=SensorDeviceClass.TIMESTAMP,
+    )
+    _attr_name = "Last delivery"
+    _attr_icon = "mdi:package-variant-closed-check"
+
+    def __init__(self, coordinator, entry_id: str) -> None:
+        super().__init__(coordinator, entry_id)
+        self._attr_unique_id = f"{entry_id}_last_delivery"
+
+    def _order(self):
+        data = self.coordinator.data
+        return data.orders.last_delivered if data and data.orders else None
+
+    @property
+    def native_value(self) -> datetime | None:
+        order = self._order()
+        if order is None:
+            return None
+        # A delivered order's window collapses to the moment it arrived.
+        start, _ = order.window(dt_util.now())
+        return start
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        order = self._order()
+        if order is None:
+            return {}
+        return {
+            "order_number": order.order_number,
+            "delivered_text": order.delivery_time_text,
+            "address": order.delivery_address,
+            "status": order.status_title,
         }
 
 

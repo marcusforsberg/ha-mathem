@@ -40,6 +40,16 @@ class OrdersResult:
         return [o for o in self.orders if o.tracking_step and not o.is_delivered]
 
     @property
+    def last_delivered(self) -> Order | None:
+        """The most recently delivered order.
+
+        For a delivered order Mathem replaces the booked window with the moment
+        it actually arrived, so this order's window start is the delivery time.
+        The API lists orders newest first, so the first delivered one wins.
+        """
+        return next((o for o in self.orders if o.is_delivered), None)
+
+    @property
     def next_delivery(self) -> Order | None:
         """The imminent order, whether or not the API still calls it active.
 
