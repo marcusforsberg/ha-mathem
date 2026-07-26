@@ -508,13 +508,23 @@ def _resolve_delivery_date(day_part: str, now_local: datetime) -> date | None:
         return None
     if day_part in _SV_RELATIVE_DAYS:
         return (now_local + timedelta(days=_SV_RELATIVE_DAYS[day_part])).date()
-    # "sön 5. juli" style: day number followed by a month name.
+    # "sön 5. juli" style: day number followed by a month name. The year is
+    # never stated, so pick the one that lands nearest today: a December date
+    # read in January belongs to last year, and a January date read in December
+    # belongs to next year. Assuming the current year would put the first of
+    # those eleven months in the future.
     match = re.search(r"(\d{1,2})\.?\s+([a-zåäö]+)", day_part)
     if match and match.group(2) in _SV_MONTHS:
-        try:
-            return date(now_local.year, _SV_MONTHS[match.group(2)], int(match.group(1)))
-        except ValueError:
+        day, month = int(match.group(1)), _SV_MONTHS[match.group(2)]
+        candidates: list[date] = []
+        for year in (now_local.year - 1, now_local.year, now_local.year + 1):
+            try:
+                candidates.append(date(year, month, day))
+            except ValueError:
+                continue  # e.g. 29 February in a non-leap year
+        if not candidates:
             return None
+        return min(candidates, key=lambda d: abs((d - now_local.date()).days))
     # A bare weekday name resolves to its next occurrence within a week.
     token = day_part.split()[0]
     if token in _SV_WEEKDAYS:

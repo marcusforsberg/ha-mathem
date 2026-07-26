@@ -448,3 +448,31 @@ def test_is_delivery_today_ignores_an_estimate_that_moves():
         "Vi tror att vi är hos dig mellan 08:29–08:51.", delivery_time="imorgon, 06:00 - 11:00"
     )
     assert order.is_delivery_today(NOW) is False
+
+
+# -- year rollover on month-name dates -------------------------------------
+
+
+def test_december_delivery_read_in_january_belongs_to_last_year():
+    now = datetime(2027, 1, 3, 10, 0, tzinfo=STORE_TZ)
+    start, _ = parse_delivery_window("sön 28. december, 09:27", now)
+    assert start.date().isoformat() == "2026-12-28"
+    assert start < now  # a past delivery must never resolve to the future
+
+
+def test_january_delivery_read_in_december_belongs_to_next_year():
+    now = datetime(2026, 12, 29, 10, 0, tzinfo=STORE_TZ)
+    start, _ = parse_delivery_window("lör 2. januari, 06:00 - 11:00", now)
+    assert start.date().isoformat() == "2027-01-02"
+
+
+def test_same_year_dates_are_unaffected():
+    now = datetime(2026, 7, 26, 10, 0, tzinfo=STORE_TZ)
+    start, _ = parse_delivery_window("sön 5. juli, 09:27", now)
+    assert start.date().isoformat() == "2026-07-05"
+
+
+def test_leap_day_does_not_crash():
+    now = datetime(2027, 3, 1, 10, 0, tzinfo=STORE_TZ)  # 2027 is not a leap year
+    start, _ = parse_delivery_window("mån 29. februari, 09:00", now)
+    assert start.date().isoformat() == "2028-02-29"
