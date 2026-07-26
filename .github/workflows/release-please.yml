@@ -5,9 +5,8 @@ name: Release
 # is what HACS reads to offer an update, and updates CHANGELOG.md, the
 # integration manifest version and pyproject.toml.
 #
-# The first release is pinned to 1.0.0 by "release-as" in
-# release-please-config.json. Remove that key once v1.0.0 is published,
-# otherwise every later release keeps trying to be 1.0.0.
+# "bootstrap-sha" in release-please-config.json is the v1.0.0 commit: releases
+# are computed from the commits after it.
 
 on:
   push:

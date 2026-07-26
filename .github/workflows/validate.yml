@@ -15,8 +15,7 @@ permissions: {}
 jobs:
   validate-hacs:
     runs-on: ubuntu-latest
-    # Needed to check out the repository while it is still private; a public
-    # repository clones anonymously.
+    # The workflow grants nothing by default, so the checkout needs this.
     permissions:
       contents: read
     steps:
