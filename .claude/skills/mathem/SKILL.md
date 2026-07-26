@@ -51,7 +51,7 @@ resolved and defaults to the configured default profile.
 | `mathem.remove_item` | `product_id`\* |
 | `mathem.get_cart` | none |
 | `mathem.audit_cart` | `profile` (omit for a per-profile matrix) |
-| `mathem.list_delivery_slots` | `days` (1-14, default 3), `profile` |
+| `mathem.list_delivery_slots` | `days` (1-14, default 3) |
 | `mathem.set_delivery_slot` | `slot_id` **xor** `predicate`, `days` (1-14, default 5) |
 | `mathem.get_orders` | `limit` (1-50, default 10) |
 | `mathem.get_order` | `order_number` (omit for the most recent) |
@@ -92,7 +92,8 @@ mutation): `display_price`, `total_gross_amount`, `currency`, `unit_count`,
 line has `item_id`, `product_id`, `name`, `quantity`, `display_price_total`,
 `available`, `availability_note` and `has_alternative_products`.
 
-`search_products`: `query`, `total`, `returned`, `previously_bought[]`, and
+`search_products`: `query`, `profile`, `filters[]`, `total`, `returned`,
+`previously_bought[]`, and
 `products[]` with `product_id`, `full_name`, `brand`, `name`, `name_extra`,
 `gross_price`, `currency`, `availability{}` and `previously_bought`.
 

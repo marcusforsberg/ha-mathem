@@ -284,8 +284,8 @@ Two invariants hold throughout:
 ## Services
 
 Every service returns a response (available to scripts via `response_variable`).
-Every service that resolves items takes an optional `profile` that defaults to
-the configured default.
+`search_products`, `add_item` and `audit_cart` take an optional `profile` that
+defaults to the configured default.
 
 | Service                      | Purpose                                                                                                                              |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |

@@ -25,9 +25,10 @@ Every service returns a response. Request it explicitly or you get nothing:
 The MCP wrapper nests the payload twice, under `result.service_response` and
 again at the top level as `service_response`. Read either.
 
-`profile` is accepted by `search_products`, `add_item`, `audit_cart` and
-`list_delivery_slots`. An empty string or an unrecognised name falls back to an
-unrestricted profile without error, so never pass a guessed name.
+`profile` is accepted by `search_products`, `add_item` and `audit_cart`. An
+empty string or an unrecognised name falls back to an unrestricted profile
+without error, so never pass a guessed name. Delivery slot services take no
+profile.
 
 ## search_products
 
@@ -41,8 +42,8 @@ verbatim so multibuys stay visible, but promotions never influence resolution.
 | `limit` | 1-60, default 10 | Pages under the hood; the API serves 30 per page. |
 
 ```json
-{"query": "havregryn", "total": 75, "returned": 3,
- "previously_bought": [],
+{"query": "havregryn", "profile": "marcus", "filters": [],
+ "total": 75, "returned": 3, "previously_bought": [],
  "products": [
    {"product_id": 7075, "full_name": "AXA Havregryn", "brand": "AXA",
     "name": "Havregryn", "name_extra": "1,5 kg",
@@ -53,7 +54,9 @@ verbatim so multibuys stay visible, but promotions never influence resolution.
     "discount": null, "bonusInfo": null, "previously_bought": false}]}
 ```
 
-`total` is the catalogue match count, `returned` is how many came back.
+`profile` and `filters` echo what was actually applied, so a narrowed result
+set is visible rather than guessed at. `total` is the catalogue match count,
+`returned` is how many came back.
 Previously bought products are floated to the front of `products[]` and also
 listed in `previously_bought[]`, mirroring Mathem's own "Tidigare handlat"
 ordering.
@@ -223,7 +226,6 @@ Read-only.
 | Field | Type | Notes |
 | --- | --- | --- |
 | `days` | 1-14, default 3 | Pages 3 days at a time internally. |
-| `profile` | text | Accepted, no practical effect on slots. |
 
 ```json
 {"count": 57,
