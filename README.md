@@ -12,10 +12,10 @@ in mind.
 > **not** affiliated with Mathem in any way. It was built for **educational and
 > personal use**. It talks to Mathem's private web API, which can change or
 > break at any time. Read Mathem's
-> [terms of service](https://www.mathem.se/) and make sure you are comfortable
-> with them before using this yourself. The author makes no commitment to
-> keeping it up to date or working as Mathem's API changes. You use it at your
-> own risk.
+> [terms of service](https://www.mathem.se/se/legal/allmanna-villkor/) and make
+> sure you are comfortable with them before using this yourself. The author
+> makes no commitment to keeping it up to date or working as Mathem's API
+> changes. You use it at your own risk.
 
 ---
 
@@ -102,6 +102,17 @@ Configuration is done entirely in the UI.
 You are asked for your Mathem email and password. The credentials are validated
 by logging in once. The session cookie lives only in memory, so the integration
 logs in again on each Home Assistant restart.
+
+Your password is stored in the config entry, in Home Assistant's own storage
+under `.storage`, in the same way every integration that needs a password
+stores one. It is sent only to `mathem.se`. If that is not acceptable to you,
+this integration is not usable, because Mathem offers no API tokens.
+
+An expired session is not something you see: the integration logs in again by
+itself and retries. If that fails too, because the password changed, Home
+Assistant flags the entry as needing attention on the integration card and in
+**Settings → Repairs**. Acting on it opens a **Re-authenticate Mathem** dialog
+asking for the new password; nothing else needs reconfiguring.
 
 ### Options
 
