@@ -287,7 +287,7 @@ actions:
       - conditions: "{{ trigger.id == 'delivery' }}"
         sequence:
           - variables:
-              window: "{{ state_attr(sensor_id, 'window') if sensor_id else none }}"
+              window: "{{ state_attr(sensor_id, 'booked_text') if sensor_id else none }}"
               est_start: "{{ state_attr(sensor_id, 'estimated_start') if sensor_id else none }}"
               est_end: "{{ state_attr(sensor_id, 'estimated_end') if sensor_id else none }}"
           # Once Mathem narrows the window it is the more useful answer, but the

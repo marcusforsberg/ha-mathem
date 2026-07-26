@@ -72,22 +72,26 @@ class MathemNextDeliverySensor(MathemEntity, SensorEntity):
         booked_start, booked_end = order.window(now)
         est_start, est_end = order.estimated_window(now)
         _, effective_end = order.effective_window(now)
+        # Naming: window_* is the window in force and matches the state,
+        # booked_* is what was reserved, estimated_* is Mathem's prediction,
+        # tracking_* is its running commentary. A prefix never mixes concepts.
         return {
             "order_number": order.order_number,
-            "window": order.delivery_time_text,
-            # Compact "HH:MM - HH:MM" for a dashboard badge, where the day is
-            # already implied. Follows the estimate when there is one.
-            "window_short": order.window_short(now),
-            # Follows the state, so start and end always describe one window.
+            # -- the window in force (what the state reports) ---------------
+            "window_text": order.window_text(now),
             "window_end": effective_end.isoformat() if effective_end else None,
+            "is_estimated": est_start is not None,
+            # -- what was booked --------------------------------------------
+            "booked_text": order.delivery_time_text,
             "booked_start": booked_start.isoformat() if booked_start else None,
             "booked_end": booked_end.isoformat() if booked_end else None,
+            # -- Mathem's narrowed prediction, absent until packing ---------
             "estimated_start": est_start.isoformat() if est_start else None,
             "estimated_end": est_end.isoformat() if est_end else None,
-            "is_estimated": est_start is not None,
-            "estimate_text": order.tracking_subtitle,
+            # -- tracking ----------------------------------------------------
             "status": order.status_title,
             "tracking_step": order.tracking_step,
+            "tracking_text": order.tracking_subtitle,
             "edit_deadline": order.cutoff_text,
             "address": order.delivery_address,
             "doorstep_delivery": order.is_doorstep_delivery,

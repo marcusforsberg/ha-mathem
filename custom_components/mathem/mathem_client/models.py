@@ -636,7 +636,7 @@ class Order:
             return (start, end)
         return self.window(now)
 
-    def window_short(self, now: datetime) -> str | None:
+    def window_text(self, now: datetime) -> str | None:
         """The effective window as ``HH:MM - HH:MM`` in local time.
 
         Intended for a compact display such as a dashboard badge, where the day

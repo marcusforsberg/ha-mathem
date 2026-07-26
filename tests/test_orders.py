@@ -419,19 +419,19 @@ def test_title_restating_the_booked_window_is_not_an_estimate():
 # -- badge helpers ---------------------------------------------------------
 
 
-def test_window_short_uses_the_estimate_when_there_is_one():
+def test_window_text_uses_the_estimate_when_there_is_one():
     order = _order_with_subtitle("Vi tror att vi är hos dig mellan 08:29–08:51.")
-    assert order.window_short(NOW) == "08:29 - 08:51"
+    assert order.window_text(NOW) == "08:29 - 08:51"
 
 
-def test_window_short_falls_back_to_the_booked_window():
+def test_window_text_falls_back_to_the_booked_window():
     order = _order_with_subtitle("Du kan fortfarande lägga till varor.")
-    assert order.window_short(NOW) == "06:00 - 11:00"
+    assert order.window_text(NOW) == "06:00 - 11:00"
 
 
-def test_window_short_is_none_without_a_window():
+def test_window_text_is_none_without_a_window():
     order = _order_with_subtitle("x", delivery_time="obegripligt")
-    assert order.window_short(NOW) is None
+    assert order.window_text(NOW) is None
 
 
 def test_is_delivery_today_tracks_the_booked_day():
