@@ -47,7 +47,8 @@
           "delivery_day_poll_minutes": "En snabbare uppdatering som bara används medan en order är inom sitt leveransfönster eller spåras live, så att spårningen hålls aktuell.",
           "ambiguity_behaviour": "Vad som händer när en sökning kan matcha flera produkter: fråga vilken, eller neka.",
           "default_profile": "Kostprofilen som används när en begäran inte anger någon.",
-          "filter_tokens": "Kostfilter som Mathem stöder just nu; kryssa i dem för att kunna använda dem i profiler."
+          "filter_tokens": "Kostfilter som Mathem stöder just nu; kryssa i dem för att kunna använda dem i profiler.",
+          "profiles_json": "Kostprofiler som JSON. Ifyllt med det som är sparat; lämna det orört eller tomt för att behålla dem, eller ersätt det med ett tomt JSON-objekt för att ta bort dem."
         }
       }
     },

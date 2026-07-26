@@ -208,7 +208,20 @@ class MathemOptionsFlow(OptionsFlow):
             schema_dict[
                 vol.Optional(CONF_FILTER_TOKENS, default=options.get(CONF_FILTER_TOKENS, []))
             ] = cv_multi_select(filter_vocab)
-        schema_dict[vol.Optional("profiles_json", default="")] = str
+        # Prefilled with what is stored, so the rules can be read back and
+        # edited rather than retyped. Submitting it empty keeps them; an empty
+        # JSON object clears them.
+        current_profiles = options.get(CONF_PROFILES) or {}
+        schema_dict[
+            vol.Optional(
+                "profiles_json",
+                default=(
+                    json.dumps(current_profiles, indent=2, ensure_ascii=False)
+                    if current_profiles
+                    else ""
+                ),
+            )
+        ] = str
 
         schema = vol.Schema(schema_dict)
         if address_options:

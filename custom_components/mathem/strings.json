@@ -47,7 +47,8 @@
           "delivery_day_poll_minutes": "A faster refresh used only while an order is inside its delivery window or being live tracked, so tracking stays current.",
           "ambiguity_behaviour": "What to do when a request could match several products: ask you which one, or reject it.",
           "default_profile": "The dietary profile used when a request does not name one.",
-          "filter_tokens": "Diet filters Mathem currently supports; ticking them exposes them for use in profiles."
+          "filter_tokens": "Diet filters Mathem currently supports; ticking them exposes them for use in profiles.",
+          "profiles_json": "Dietary profiles as JSON. Prefilled with what is currently stored; leave it unchanged or empty to keep them, or replace it with an empty JSON object to remove them."
         }
       }
     },
