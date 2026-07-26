@@ -345,22 +345,17 @@ appears on `sensor.mathem_last_delivery` as `image_url`, and also as
 `entity_picture`, which badges and tiles render on their own, so a badge shows
 the photo instead of the icon.
 
-Two things to expect. The photo is **not always there**: most orders have none,
-and it can appear some minutes after the delivery rather than with it. And the
-link is a **signed URL that expires 14 days after delivery**, after which it
-stops loading. Mathem does not re-sign it, so re-polling will not revive an old
-one. It is proof-of-delivery for the day, not an archive.
+Note that the delivery photo is a signed URL that expires 14 days after
+delivery. The API keeps returning the expired link, so a present `image_url` is
+no guarantee that it still loads. It is proof-of-delivery for the day, not an
+archive.
 
-To show it full size, read the attribute from a markdown card, which is the way
-to render a URL that changes per delivery:
+To show it full size, read the attribute from a markdown card:
 
 ```jinja
 {% set photo = state_attr('sensor.mathem_last_delivery', 'image_url') %}
 {% if photo %}![Leverans]({{ photo }}){% endif %}
 ```
-
-The `picture-entity` card is not an option here: it takes a camera, image or
-person entity, and its `image` option is a static URL that cannot be templated.
 
 ## Voice control
 
