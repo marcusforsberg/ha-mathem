@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
@@ -20,5 +20,8 @@ class MathemEntity(CoordinatorEntity[MathemCoordinator]):
             identifiers={(DOMAIN, entry_id)},
             name="Mathem",
             manufacturer="Mathem",
-            entry_type=None,
+            # There is no hardware here, so Home Assistant should present this
+            # as a service rather than a physical device.
+            entry_type=DeviceEntryType.SERVICE,
+            configuration_url="https://www.mathem.se/",
         )
