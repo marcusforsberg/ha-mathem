@@ -524,18 +524,6 @@ Every push and pull request is also validated by the HACS action and by
 Home Assistant's `hassfest`, which check the publishing requirements and the
 integration manifest.
 
-## Architecture
-
-- **Vendored client, not a pip requirement.** The client stays a subpackage so
-  publishing it later is mechanical.
-- **A single injected aiohttp session.** Home Assistant passes its shared
-  session; standalone use creates its own.
-- **A data update coordinator** on a 30 minute base interval that tightens to a
-  couple of minutes on delivery day. Mutating services push fresh state straight
-  in rather than refetching, so adding to the cart costs one request.
-- **The cart mutation primitive is delta based.** Quantities are deltas, and
-  removal is a decrement to zero.
-
 ## Credits
 
 This project builds on the work of others in the community:
