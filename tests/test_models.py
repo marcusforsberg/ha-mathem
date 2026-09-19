@@ -64,6 +64,46 @@ def test_detail_allergens_present():
     assert detail.allergens_text == "vete, korn"
 
 
+def test_detail_nutrition_absent_is_none():
+    detail = ProductDetail.from_api(make_detail(1, "X"))
+    assert detail.nutrition is None
+
+
+def test_detail_nutrition_rows_keep_order_and_indent():
+    table = {
+        "title": "Näringsvärde per 100g/ml",
+        "rows": [
+            {"key": "Energi", "value": "138 kJ / 33 kcal", "indent": None, "keyId": None},
+            {"key": "Fett", "value": "1.90 g", "indent": None, "keyId": None},
+            {"key": "Mättat fett", "value": "0.30 g", "indent": 1, "keyId": None},
+        ],
+        "disclaimers": None,
+    }
+    detail = ProductDetail.from_api(make_detail(1, "X", nutrition=table))
+    assert detail.nutrition is not None
+    assert detail.nutrition.title == "Näringsvärde per 100g/ml"
+    assert [(r.key, r.value, r.indent) for r in detail.nutrition.rows] == [
+        ("Energi", "138 kJ / 33 kcal", 0),
+        ("Fett", "1.90 g", 0),
+        ("Mättat fett", "0.30 g", 1),
+    ]
+    assert detail.nutrition.disclaimers == []
+
+
+def test_detail_nutrition_without_data_keeps_disclaimer():
+    table = {
+        "title": "Näringsvärde per 100g/ml",
+        "rows": [],
+        "disclaimers": ["Tyvärr har vi ingen information om näringsvärde för varan ännu."],
+    }
+    detail = ProductDetail.from_api(make_detail(1, "X", nutrition=table))
+    assert detail.nutrition is not None
+    assert detail.nutrition.rows == []
+    assert detail.nutrition.disclaimers == [
+        "Tyvärr har vi ingen information om näringsvärde för varan ännu."
+    ]
+
+
 def test_classification_excludes_prismatch_tree():
     detail = ProductDetail.from_api(
         make_detail(

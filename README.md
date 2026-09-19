@@ -317,7 +317,7 @@ returns `needs_disambiguation` with a `prompt` and `candidates`. See
 | Service                      | Purpose                                                                                                                              |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `mathem.search_products`     | Search the catalogue. Returns products with the promotion block verbatim.                                                            |
-| `mathem.get_product`         | Full detail for one product, including ingredients, allergens and categories.                                                        |
+| `mathem.get_product`         | Full detail for one product, including ingredients, allergens, nutrition per 100 g/ml and categories.                                |
 | `mathem.add_item`            | Add an item. Give a `query` to resolve safely, or a `product_id` to assert one. Returns `needs_disambiguation` rather than guessing. |
 | `mathem.set_quantity`        | Set an absolute quantity (reads the cart and sends the delta).                                                                       |
 | `mathem.remove_item`         | Remove a product entirely.                                                                                                           |

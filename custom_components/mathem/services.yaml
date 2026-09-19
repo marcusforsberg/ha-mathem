@@ -31,7 +31,7 @@ search_products:
 
 get_product:
   name: Get product
-  description: Fetch full detail for one product, including ingredients, allergens and categories.
+  description: Fetch full detail for one product, including ingredients, allergens, nutrition per 100 g/ml and categories.
   fields:
     product_id:
       name: Product ID

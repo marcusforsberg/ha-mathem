@@ -181,16 +181,45 @@ class ContentsRow:
     key: str | None
     key_id: str | None
     value: str | None
+    indent: int = 0
 
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> ContentsRow:
-        return cls(key=data.get("key"), key_id=data.get("keyId"), value=data.get("value"))
+        return cls(
+            key=data.get("key"),
+            key_id=data.get("keyId"),
+            value=data.get("value"),
+            indent=int(data.get("indent") or 0),
+        )
 
 
 # Localised labels for the two rows the resolver cares about. keyId is null for
 # both, so matching is on the label string.
 INGREDIENTS_LABEL = "ingredienser"
 ALLERGENS_LABEL = "allergener"
+
+
+@dataclass(slots=True)
+class NutritionTable:
+    """``detailedInfo.local[sv].nutritionInfoTable``.
+
+    Rows are declared per 100 g/ml (see ``title``) with free-text values such
+    as ``"138 kJ / 33 kcal"`` or ``"1.90 g"``. Sub-rows (Mättat fett under Fett,
+    Sockerarter under Kolhydrater) carry ``indent`` 1. A product without data
+    has no rows and a disclaimer saying so.
+    """
+
+    title: str | None
+    rows: list[ContentsRow]
+    disclaimers: list[str]
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> NutritionTable:
+        return cls(
+            title=data.get("title"),
+            rows=[ContentsRow.from_api(r) for r in (data.get("rows") or [])],
+            disclaimers=[str(d) for d in (data.get("disclaimers") or []) if d],
+        )
 
 
 @dataclass(slots=True)
@@ -202,6 +231,7 @@ class ProductDetail:
     is_restricted: bool
     restriction_age_limit: int | None
     contents_rows: list[ContentsRow]
+    nutrition: NutritionTable | None
     raw: dict[str, Any] = field(repr=False, default_factory=dict)
 
     @property
@@ -219,12 +249,17 @@ class ProductDetail:
             sv = local_list[0]
         contents = (sv or {}).get("contentsTable") or {}
         rows = [ContentsRow.from_api(r) for r in (contents.get("rows") or [])]
+        nutrition_data = (sv or {}).get("nutritionInfoTable")
+        nutrition = (
+            NutritionTable.from_api(nutrition_data) if isinstance(nutrition_data, dict) else None
+        )
         return cls(
             product=Product.from_api(data),
             categories=[Category.from_api(c) for c in (data.get("categories") or [])],
             is_restricted=bool(data.get("isRestricted")),
             restriction_age_limit=data.get("restrictionAgeLimit"),
             contents_rows=rows,
+            nutrition=nutrition,
             raw=data,
         )
 
