@@ -26,7 +26,15 @@ from .config_helpers import extract_addresses
 from .const import DOMAIN
 from .data import MathemConfigEntry, MathemRuntime
 from .mathem_client import MathemError, ResolveStatus, SlotPredicate, cheapest_matching
-from .mathem_client.models import Cart, Order, OrderDetail, ProductDetail, Slot, _pick
+from .mathem_client.models import (
+    Cart,
+    NutritionTable,
+    Order,
+    OrderDetail,
+    ProductDetail,
+    Slot,
+    _pick,
+)
 from .mathem_client.profiles import Profile
 from .mathem_client.resolve import Resolver
 
@@ -120,6 +128,18 @@ def _product_dict(product) -> dict[str, Any]:
     }
 
 
+def _nutrition_dict(nutrition: NutritionTable | None) -> dict[str, Any] | None:
+    if nutrition is None:
+        return None
+    return {
+        "title": nutrition.title,
+        "rows": [
+            {"key": row.key, "value": row.value, "indent": row.indent} for row in nutrition.rows
+        ],
+        "disclaimers": nutrition.disclaimers,
+    }
+
+
 def _detail_dict(detail: ProductDetail) -> dict[str, Any]:
     return {
         **_product_dict(detail.product),
@@ -127,6 +147,7 @@ def _detail_dict(detail: ProductDetail) -> dict[str, Any]:
         "restriction_age_limit": detail.restriction_age_limit,
         "ingredients": detail.ingredients_text,
         "allergens": detail.allergens_text,
+        "nutrition": _nutrition_dict(detail.nutrition),
         "categories": [
             {"id": c.id, "name": c.name, "slug": c.slug, "parents": c.parents}
             for c in detail.classification_categories()

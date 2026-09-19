@@ -48,11 +48,16 @@ def make_detail(
     categories: list[dict] | None = None,
     ingredients: str | None = None,
     allergens: str | None = None,
+    nutrition: dict[str, Any] | None = None,
     badges: list[str] | None = None,
     promotion: dict | None = None,
     **extra: Any,
 ) -> dict[str, Any]:
-    """A ``/products/{id}/`` payload. ``allergens=None`` means *no row* (unknown)."""
+    """A ``/products/{id}/`` payload.
+
+    ``allergens=None`` means *no row* (unknown). ``nutrition`` is passed through
+    as the ``nutritionInfoTable`` block; ``None`` omits the table.
+    """
     rows: list[dict[str, Any]] = []
     if ingredients is not None:
         rows.append({"key": "Ingredienser", "keyId": None, "value": ingredients})
@@ -60,10 +65,13 @@ def make_detail(
         rows.append({"key": "Allergener", "keyId": None, "value": allergens})
     detail = make_product(product_id, full_name, **extra)
     detail["categories"] = categories or []
-    detail["detailedInfo"] = {
-        "country": "SE",
-        "local": [{"language": "sv", "contentsTable": {"title": "Innehåll", "rows": rows}}],
+    local: dict[str, Any] = {
+        "language": "sv",
+        "contentsTable": {"title": "Innehåll", "rows": rows},
     }
+    if nutrition is not None:
+        local["nutritionInfoTable"] = nutrition
+    detail["detailedInfo"] = {"country": "SE", "local": [local]}
     if promotion is not None:
         detail["promotion"] = promotion
     # Test-only marker for badge-filter matching; ignored by the real model.

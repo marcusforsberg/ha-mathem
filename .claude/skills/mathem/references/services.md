@@ -78,6 +78,27 @@ unknown, never safe.
 Use this when a user asks you to verify that something is vegan, gluten free or
 free of a specific allergen. Do not answer from the product name.
 
+`nutrition` carries the label's nutrition table, declared per 100 g/ml:
+
+```json
+{"nutrition": {"title": "Näringsvärde per 100g/ml",
+  "rows": [
+    {"key": "Energi", "value": "138 kJ / 33 kcal", "indent": 0},
+    {"key": "Fett", "value": "1.90 g", "indent": 0},
+    {"key": "Mättat fett", "value": "0.30 g", "indent": 1},
+    {"key": "Kolhydrater", "value": "0 g", "indent": 0},
+    {"key": "Sockerarter", "value": "0 g", "indent": 1},
+    {"key": "Fibrer", "value": "0.60 g", "indent": 0},
+    {"key": "Protein", "value": "3.30 g", "indent": 0},
+    {"key": "Salt", "value": "0.09 g", "indent": 0}],
+  "disclaimers": []}}
+```
+
+Values are free text in Swedish, so parse the number out of them. `indent` 1
+marks a sub-row of the row above it. A product without data has `rows: []`
+and a disclaimer that says so; `nutrition` is `null` when Mathem sends no table
+at all. Use this when a user asks about calories, protein, sugar or salt.
+
 ## add_item
 
 The main entry point. Give a `query` to resolve through the safety tiers, or a
