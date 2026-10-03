@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/marcusforsberg/ha-mathem/compare/v1.1.0...v1.1.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **blueprint:** describe order and delivery lookups in LLM tool description ([#5](https://github.com/marcusforsberg/ha-mathem/issues/5)) ([b848c0c](https://github.com/marcusforsberg/ha-mathem/commit/b848c0c53dc22130531876912121d8d67e907f6a))
+
 ## [1.1.0](https://github.com/marcusforsberg/ha-mathem/compare/v1.0.1...v1.1.0) (2026-09-19)
 
 
