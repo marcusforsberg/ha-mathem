@@ -26,14 +26,25 @@ blueprint:
 # This top-level description is handed to the conversation agent verbatim as the
 # tool description, so it must say WHEN to use the tool and HOW to fill fields.
 description: >-
-  Manage the user's Mathem online grocery cart. Use this whenever the user wants
-  to search Mathem for a product, add an item to the Mathem cart, change an
-  item's quantity, remove an item, or ask what (or how much of something) is in
-  the cart, or wants a word remembered as a particular product. Set `action` to
-  one of search, add, set_quantity, remove, cart, orders, order, set_alias,
+  Manage the user's Mathem online grocery account: the cart, placed orders and
+  upcoming deliveries. Use this whenever the user wants to search Mathem for a
+  product, add an item to the Mathem cart, change an item's quantity, remove an
+  item, ask what (or how much of something) is in the cart, ask what is in an
+  upcoming or past delivery, ask whether something was bought or ordered, or
+  wants a word remembered as a particular product. Set `action` to one of
+  search, add, set_quantity, remove, cart, orders, order, set_alias,
   remove_alias or pantry. For add and search, pass a free-text `query` (a product
   name such as "havremjölk"); for set_quantity and remove, pass a numeric
   `product_id` obtained from a prior search or from the cart.
+
+  For questions about orders and deliveries ("what is coming tomorrow", "did I
+  buy toilet paper", "what did the last order cost"), use action order without
+  `order_number`. It returns the most recent placed order with every line,
+  including an upcoming delivery that has not arrived yet. For older orders, use
+  action orders to list recent orders with their totals, then action order with
+  the relevant `order_number`. Do not answer these from the cart, which only
+  holds items not yet ordered. Product names are Swedish, so match the user's
+  word loosely against line names (toapapper matches "Lotus Toalettpapper").
 
   To add several of an item, pass `quantity` with add (e.g. add "tofu" quantity
   8). Leave `quantity` out when the user did not say a number: a pantry entry can
@@ -72,6 +83,10 @@ description: >-
   stock; tell the user, include the `availability_note`, and mention that
   alternatives exist when `has_alternatives` is true. This never places an order
   or checks out.
+
+  Keywords: Mathem, groceries, matvaror, varukorg, cart, beställning, order,
+  orderhistorik, order history, leverans, delivery, köpt, purchased, kvitto,
+  receipt.
 
 # Serialise calls so two overlapping requests cannot race the cart.
 mode: queued
